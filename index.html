@@ -885,12 +885,19 @@
   function openWhatsAppBusiness(phoneRaw, message) {
     const cleanPhone = String(phoneRaw || '').replace(/\D/g, '');
     const waPhone = (cleanPhone.length >= 10) ? (cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone) : '';
-    const url = waPhone
-      ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(message)}`
-      : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  }
+    const encodedMsg = encodeURIComponent(message);
+    const isAndroid = /Android/i.test(navigator.userAgent);
 
+    if (isAndroid) {
+      const params = waPhone ? `phone=${waPhone}&text=${encodedMsg}` : `text=${encodedMsg}`;
+      window.location.href = `intent://send/?${params}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;end;`;
+    } else {
+      const url = waPhone
+        ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodedMsg}`
+        : `https://api.whatsapp.com/send?text=${encodedMsg}`;
+      window.open(url, '_blank');
+    }
+  }
   function sendSubReminderWhatsApp(clientName, username, endDate) {
     const msg = `*ماسا جروب للإلكترونيات* ⚡\nأهلاً بك، نذكركم بقرب انتهاء اشتراك IPTV الخاص بيوزر (*${username}*) بتاريخ *${endDate}*.\nللتجديد تواصل معنا: 01002902102 / 01270919376`;
     openWhatsAppBusiness(clientName, msg);
