@@ -84,7 +84,7 @@
     .service-inline-row input, .service-inline-row select {
       padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-weight: bold; background: #faf5ff;
     }
-    .service-inline-row input { flex: 1; min-width: 120px; }
+    .service-inline-row input[type="text"] { flex: 1; min-width: 120px; }
 
     .qty-group { display: flex; align-items: center; gap: 8px; }
     .qty-btn { background: #e2e8f0; border: none; width: 32px; height: 32px; border-radius: 8px; font-weight: 900; font-size: 18px; cursor: pointer; }
@@ -301,7 +301,7 @@
         </div>
         <div class="form-group full">
           <label>اسم الصنف أو الخدمة</label>
-          <input type="text" id="newProdName" placeholder="مثال: سيناتور 999 أو اشتراك IPTV سنة" oninput="autoFillAliases('newProdName', 'newProdAliases')">
+          <input type="text" id="newProdName" placeholder="مثال: سيناتور 999 أو اشتراك IPTV" oninput="autoFillAliases('newProdName', 'newProdAliases')">
         </div>
         <div class="form-group full">
           <label>
@@ -531,7 +531,6 @@
   let isAdminUnlocked = false;
   let sessionAdminPin = "";
 
-  // القاموس المرجعي المركزي للماركات والمصطلحات (يعمل في الخلفية لتسريع التقاط الصوت)
   const GLOBAL_BRAND_DICTIONARY = {
     'senator': 'سيناتور', 'سنتور': 'سيناتور', 'سينتور': 'سيناتور',
     'hikvision': 'هيك فيجن', 'هيكفيجن': 'هيك فيجن', 'هيك فيجين': 'هيك فيجن', 'هيك': 'هيك فيجن',
@@ -753,7 +752,7 @@
     if (prod.kind === 'service') {
       invoiceItems.push({
         name: prod.name, qty: qty, price: prod[tier], kind: 'service',
-        username: '', subMonths: 12, durationLabel: 'سنة (12 شهر)', endDate: calcEndDateStr(12), prodRef: prod
+        username: '', subMonths: 12, durationLabel: 'سنة', endDate: calcEndDateStr(12), prodRef: prod
       });
     } else {
       const ex = invoiceItems.find(i => i.name === prod.name && i.kind !== 'service');
@@ -793,12 +792,15 @@
           <div class="service-inline-row">
             <input type="text" placeholder="اكتب اليوزر..." value="${item.username || ''}" oninput="updateServiceField(${idx}, 'username', this.value)">
             <select onchange="updateServiceDuration(${idx}, this.value)">
-              <option value="1" ${item.subMonths == 1 ? 'selected' : ''}>شهر</option>
               <option value="3" ${item.subMonths == 3 ? 'selected' : ''}>3 شهور</option>
               <option value="6" ${item.subMonths == 6 ? 'selected' : ''}>6 شهور</option>
               <option value="12" ${item.subMonths == 12 ? 'selected' : ''}>سنة</option>
+              <option value="manual" ${item.subMonths === 'manual' ? 'selected' : ''}>تعديل يدوي</option>
             </select>
-            <span style="font-size:11.5px;color:#6b21a8;font-weight:bold;">ينتهي: ${item.endDate}</span>
+            ${item.subMonths === 'manual'
+              ? `<input type="date" value="${item.endDate}" onchange="updateManualEndDate(${idx}, this.value)" style="max-width:140px;">`
+              : `<span style="font-size:11.5px;color:#6b21a8;font-weight:bold;">ينتهي: ${item.endDate}</span>`
+            }
           </div>
         ` : ''}
       </div>
@@ -807,13 +809,26 @@
   }
 
   function updateServiceField(idx, field, val) { invoiceItems[idx][field] = val; }
-  function updateServiceDuration(idx, months) {
-    const m = Number(months);
-    const labels = { 1: 'شهر', 3: '3 شهور', 6: '6 شهور', 12: 'سنة' };
+
+  function updateServiceDuration(idx, val) {
+    if (val === 'manual') {
+      invoiceItems[idx].subMonths = 'manual';
+      invoiceItems[idx].durationLabel = 'مدة مخصصة';
+      renderInvoiceItems();
+      return;
+    }
+    const m = Number(val);
+    const labels = { 3: '3 شهور', 6: '6 شهور', 12: 'سنة' };
     invoiceItems[idx].subMonths = m;
     invoiceItems[idx].durationLabel = labels[m] || (m + ' شهر');
     invoiceItems[idx].endDate = calcEndDateStr(m);
     renderInvoiceItems();
+  }
+
+  function updateManualEndDate(idx, dateVal) {
+    if (!dateVal) return;
+    invoiceItems[idx].endDate = dateVal;
+    invoiceItems[idx].durationLabel = 'حتى ' + dateVal;
   }
 
   function changeQty(idx, d) { invoiceItems[idx].qty += d; if (invoiceItems[idx].qty <= 0) invoiceItems.splice(idx, 1); renderInvoiceItems(); }
@@ -1101,7 +1116,6 @@
     const cb = pendingCallback; closePinModal(); if (cb) cb(pin);
   }
 
-  // إعداد الاستماع فائق السرعة (Zero-Delay)
   function setupSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -1122,7 +1136,6 @@
         parseVoiceCommandLocal(finalStr);
       } else if (interim) {
         document.getElementById('statusText').innerText = `⚡ "${interim}"`;
-        // تنفيذ فوري بمجرد توقف الصوت لمدة 450 ملي ثانية دون انتظار السيرفر
         instantExecTimer = setTimeout(() => {
           try { recognition.stop(); } catch (err) {}
           parseVoiceCommandLocal(interim);
