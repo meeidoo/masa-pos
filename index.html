@@ -12,7 +12,6 @@
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
     body { margin: 0; background: var(--bg); color: #1e293b; padding-top: 102px; padding-bottom: 245px; }
 
-    /* إشعار علوي سريع بدلاً من النوافذ المزعجة */
     .toast-banner {
       position: fixed; top: 106px; left: 50%; transform: translateX(-50%);
       background: #0f172a; color: #fff; padding: 10px 18px; border-radius: 30px;
@@ -41,7 +40,6 @@
     .tab-content { display: none; padding: 12px; max-width: 1350px; margin: 0 auto; }
     .tab-content.active { display: block; }
 
-    /* شريط التنبيهات العلوي في الرئيسية */
     .top-alerts-strip {
       background: linear-gradient(90deg, #7f1d1d, #991b1b); color: #fff; border-radius: 12px;
       padding: 10px 14px; margin-bottom: 12px; display: none; justify-content: space-between;
@@ -70,7 +68,6 @@
     }
     .client-inputs input { flex: 1; min-width: 0; }
 
-    /* قائمة اقتراحات العملاء للموبايل والكمبيوتر */
     .client-dropdown {
       position: absolute; top: 46px; right: 0; left: 0; background: #fff; color: #0f172a;
       border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.35); z-index: 500;
@@ -163,6 +160,16 @@
     .auto-gen-badge { background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; }
     .price-rule-hint { grid-column: span 2; background: #eff6ff; color: #1e40af; padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; text-align: center; }
 
+    .inv-voice-box {
+      grid-column: span 2; background: #eff6ff; border: 1.5px solid #93c5fd; color: #1e3a8a;
+      padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: bold; display: none; text-align: center;
+    }
+    .inv-mic-btn {
+      background: var(--accent); color: #fff; border: none; padding: 8px 14px; border-radius: 10px;
+      font-weight: bold; font-size: 13px; cursor: pointer;
+    }
+    .inv-mic-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
+
     .bottom-bar {
       position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 2px solid #cbd5e1;
       padding: 10px 14px; z-index: 200; box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
@@ -235,7 +242,6 @@
 
   <!-- 1. الكاشير -->
   <div id="tab-pos" class="tab-content active">
-    <!-- شريط التنبيهات العلوي في الرئيسية -->
     <div id="topAlertsStrip" class="top-alerts-strip" onclick="requestAdminTab('alerts', document.querySelector('.nav-tab[data-tab=\'alerts\']'))">
       <span id="topAlertsText" style="font-size:12.5px;font-weight:bold;">🔔 لديك تنبيهات ومواعيد شحن مستحقة</span>
       <span style="background:#fff;color:#991b1b;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:900;">فتح ⬅️</span>
@@ -301,14 +307,13 @@
     </div>
   </div>
 
-  <!-- 2. مركز التنبيهات الموحد وأوامر الشحن المؤجلة -->
+  <!-- 2. مركز التنبيهات الموحد -->
   <div id="tab-alerts" class="tab-content">
     <div class="card" style="border-right:4px solid #2563eb;">
       <div class="card-title">
         <span>🔔 مركز التنبيهات وأوامر البيع المؤجلة والشحن</span>
         <button class="btn-sm" style="background:var(--accent);color:#fff;" onclick="openAlertModal()">➕ إضافة تنبيه مخصص</button>
       </div>
-      <p style="font-size:12px;color:#64748b;margin-top:0;">تحكم كامل: يمكنك إتمام الشحنة، تعديل تاريخ التنبيه أو تفاصيله، أو إلغاؤه وحذفه نهائياً.</p>
       <table>
         <thead>
           <tr>
@@ -368,7 +373,6 @@
       </table>
     </div>
 
-    <!-- سندات التحصيل (تعديل + حذف) -->
     <div class="card" style="padding:0;">
       <div style="padding:12px;font-weight:bold;">🧾 سجل سندات التحصيل النقدي (تعديل / حذف)</div>
       <table>
@@ -384,7 +388,6 @@
       </table>
     </div>
 
-    <!-- اشتراكات IPTV (تعديل + حذف) -->
     <div class="card" style="padding:0;">
       <div style="padding:12px;font-weight:bold;color:#6b21a8;">🌐 سجل اشتراكات IPTV (تعديل / حذف)</div>
       <table>
@@ -406,10 +409,11 @@
     <div class="card">
       <div class="card-title">
         <span>➕ إضافة صنف أو خدمة جديدة</span>
-        <button class="btn-sm" style="background:var(--accent);color:#fff;" onclick="toggleVoice()">🎙️ إضافة بالصوت</button>
+        <button id="invMicBtn" class="inv-mic-btn" onclick="toggleInventoryVoice()">🎙️ إضافة بالصوت</button>
       </div>
       <div class="form-grid" onkeypress="if(event.key==='Enter' && event.target.tagName !== 'TEXTAREA') { event.preventDefault(); addNewProduct(); }">
-        <div class="price-rule-hint">⚡ اكتب التكلفة وسنملأ لك (الجملة +50 | الفني +100 | القطاعي +200) أوتوماتيك مع حرية التعديل</div>
+        <div id="invVoiceStatus" class="inv-voice-box">🎤 تكلم الآن... قل مثلاً: رسيفر سيناتور 999 10 قطعة بـ 500</div>
+        <div class="price-rule-hint">⚡ اكتب أو انطق التكلفة وسنملأ لك (الجملة +50 | الفني +100 | القطاعي +200) أوتوماتيك</div>
         <div class="form-group">
           <label>نوع الصنف</label>
           <select id="newProdKind" onchange="toggleNewProdStockField()">
@@ -423,7 +427,7 @@
         </div>
         <div class="form-group full">
           <label>اسم الصنف أو الخدمة</label>
-          <input type="text" id="newProdName" placeholder="مثال: رسيفر نوفا بريمير أو اشتراك IPTV" oninput="autoFillAliases('newProdName', 'newProdAliases')">
+          <input type="text" id="newProdName" placeholder="مثال: رسيفر سيناتور 999 أو اشتراك IPTV" oninput="autoFillAliases('newProdName', 'newProdAliases')">
         </div>
         <div class="form-group full">
           <label>
@@ -674,7 +678,6 @@
     </div>
   </div>
 
-  <!-- نافذة إضافة / تعديل عميل -->
   <div id="clientModal" class="modal-overlay">
     <div class="modal-box" onkeypress="if(event.key==='Enter' && event.target.tagName !== 'TEXTAREA') { event.preventDefault(); saveClientModal(); }">
       <h3 id="clientModalTitle" style="margin:0 0 12px;color:#0f172a;">👤 إضافة عميل جديد</h3>
@@ -719,7 +722,6 @@
     </div>
   </div>
 
-  <!-- نافذة تعديل الصنف -->
   <div id="editProductModal" class="modal-overlay">
     <div class="modal-box">
       <h3 style="margin:0 0 12px;color:#0f172a;">📦 تعديل صنف / تزويد كمية</h3>
@@ -776,7 +778,6 @@
     </div>
   </div>
 
-  <!-- نافذة تسجيل / تعديل تحصيل -->
   <div id="collectModal" class="modal-overlay">
     <div class="modal-box" onkeypress="if(event.key==='Enter') { event.preventDefault(); submitCollection(); }">
       <h3 id="collectModalTitle" style="margin:0 0 12px;color:#0f172a;">💵 تسجيل سند تحصيل نقدي</h3>
@@ -800,7 +801,6 @@
     </div>
   </div>
 
-  <!-- نافذة تعديل اشتراك IPTV -->
   <div id="editSubModal" class="modal-overlay">
     <div class="modal-box">
       <h3 style="margin:0 0 12px;color:#0f172a;">🌐 تعديل اشتراك IPTV</h3>
@@ -834,7 +834,6 @@
     </div>
   </div>
 
-  <!-- نافذة إضافة / تعديل تنبيه مخصص -->
   <div id="alertModal" class="modal-overlay">
     <div class="modal-box">
       <h3 id="alertModalTitle" style="margin:0 0 12px;color:#0f172a;">🔔 إضافة / تعديل تنبيه</h3>
@@ -865,7 +864,6 @@
     </div>
   </div>
 
-  <!-- نافذة فاتورة شراء من مورد -->
   <div id="purchaseModal" class="modal-overlay">
     <div class="modal-box">
       <h3 style="margin:0 0 12px;color:#0f172a;">📦 تسجيل فاتورة شراء من مورد</h3>
@@ -899,7 +897,6 @@
     </div>
   </div>
 
-  <!-- نافذة سداد لمورد -->
   <div id="paySupplierModal" class="modal-overlay">
     <div class="modal-box">
       <h3 style="margin:0 0 12px;color:#0f172a;">💸 سداد دفعة نقدية لمورد</h3>
@@ -922,7 +919,6 @@
     </div>
   </div>
 
-  <!-- نافذة تعديل حركة مورد -->
   <div id="editSupLogModal" class="modal-overlay">
     <div class="modal-box">
       <h3 style="margin:0 0 12px;color:#0f172a;">✏️ تعديل حركة مورد</h3>
@@ -953,7 +949,6 @@
     </div>
   </div>
 
-  <!-- نافذة إضافة / تعديل مرتجع صيانة للشركات RMA -->
   <div id="rmaModal" class="modal-overlay">
     <div class="modal-box">
       <h3 id="rmaModalTitle" style="margin:0 0 12px;color:#0f172a;">🔧 تسجيل / تعديل جهاز صيانة شركات</h3>
@@ -994,7 +989,6 @@
     </div>
   </div>
 
-  <!-- نافذة الرقم السري -->
   <div id="pinModal" class="modal-overlay">
     <div class="modal-box" style="max-width:340px;text-align:center;">
       <div style="font-size:32px;margin-bottom:8px;">🔐</div>
@@ -1029,11 +1023,11 @@
   let pendingPickerQty = 1;
   let recognition;
   let isRecording = false;
+  let voiceContext = 'pos'; // 'pos' | 'inventory'
   let instantExecTimer = null;
   let currentClientFilter = 'overdue';
   let currentReportRange = 'today';
 
-  // طابور المزامنة الآمن لضمان عدم سقوط أي حركة في الخلفية
   let syncQueue = Promise.resolve();
   let pendingSyncCount = 0;
 
@@ -1063,7 +1057,6 @@
     window._toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2800);
   }
 
-  // تنظيف رقم الواتساب (+20 10 70679563 -> 01070679563)
   function cleanEgyptianPhone(str) {
     let s = String(str || '');
     const arNums = { '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9' };
@@ -1073,7 +1066,6 @@
     return s;
   }
 
-  // طابور إرسال آمن وسريع في الخلفية
   function enqueueServerSync(payload, onSuccessRefresh = true) {
     pendingSyncCount++;
     updateConnBadge();
@@ -1195,9 +1187,6 @@
     updateTotals();
   }
 
-  // ==========================================
-  // قائمة اقتراحات العملاء للموبايل والكمبيوتر
-  // ==========================================
   function handleClientInput() {
     const inp = document.getElementById('clientName');
     const cleaned = cleanEgyptianPhone(inp.value);
@@ -1242,9 +1231,6 @@
     saveDraftState();
   }
 
-  // ==========================================
-  // وضع الفاتورة: بيع فوري vs أمر بيع مؤجل / شحن بريد
-  // ==========================================
   function setOrderMode(mode, skipSave = false) {
     currentOrderMode = mode;
     document.getElementById('modeInstantBtn').classList.toggle('active-mode', mode === 'instant');
@@ -1263,15 +1249,11 @@
     saveDraftState();
   }
 
-  // ==========================================
-  // مركز التنبيهات الموحد (الشريط العلوي + قسم التنبيهات)
-  // ==========================================
   function renderUnifiedAlerts() {
     const todayStr = new Date().toISOString().split('T')[0];
     const todayObj = new Date(); todayObj.setHours(0, 0, 0, 0);
     const items = [];
 
-    // 1. أوامر البيع المؤجلة / الشحن
     oldInvoices.filter(inv => inv.orderType === 'deferred').forEach(inv => {
       items.push({
         source: 'deferred', id: inv.id, date: inv.reminderDate || inv.date.split(' ')[0],
@@ -1280,7 +1262,6 @@
       });
     });
 
-    // 2. مواعيد تحصيل الآجل من العملاء
     clients.filter(c => c.balance > 0 && c.reminderDate).forEach(c => {
       items.push({
         source: 'client_rem', id: c.name, date: c.reminderDate,
@@ -1289,7 +1270,6 @@
       });
     });
 
-    // 3. اشتراكات IPTV القريبة أو المنتهية
     subscriptionsList.forEach(sub => {
       if (!sub.endDate) return;
       const end = new Date(sub.endDate); end.setHours(0, 0, 0, 0);
@@ -1303,7 +1283,6 @@
       }
     });
 
-    // 4. التنبيهات المخصصة
     customAlertsList.filter(a => a.status === 'نشط').forEach(a => {
       items.push({
         source: 'custom', id: a.id, date: a.date,
@@ -1432,9 +1411,6 @@
     enqueueServerSync(payload);
   }
 
-  // ==========================================
-  // التسعير التلقائي والمخزن (إضافة / تعديل / حذف)
-  // ==========================================
   function autoCalculateTierPrices(prefix) {
     const cost = Number(document.getElementById(prefix + 'Cost').value) || 0;
     if (cost <= 0) return;
@@ -1468,10 +1444,10 @@
     const stockVal = kind === 'service' ? 0 : (Number(document.getElementById('newProdStock').value) || 0);
     const minStockVal = Number(document.getElementById('newProdMinStock').value) || 2;
 
-    // تحديث فوري في الذاكرة (Optimistic UI)
     catalog.push({ name, aliases: aliasesVal, cost, wholesale, technician: tech, retail, stock: stockVal, kind, minStock: minStockVal });
     renderAllViews();
     document.querySelectorAll('#tab-inventory input, #tab-inventory textarea').forEach(i => { if (i.id !== 'newProdMinStock') i.value = ''; });
+    document.getElementById('invVoiceStatus').style.display = 'none';
     document.getElementById('newProdName').focus();
     showToast(`✅ تم إضافة "${name}" للمخزن فوراً`);
 
@@ -1565,9 +1541,6 @@
     enqueueServerSync({ type: 'delete_product', pin: sessionAdminPin, name: p.name });
   }
 
-  // ==========================================
-  // إدارة العملاء والسندات والاشتراكات (إضافة / تعديل / حذف)
-  // ==========================================
   function openAddClientModal(prefillName = '', isEdit = false) {
     document.getElementById('clientDropdown').style.display = 'none';
     const existing = isEdit ? clients.find(c => c.name === prefillName) : null;
@@ -1790,9 +1763,6 @@
     enqueueServerSync({ type: 'delete_subscription', pin: sessionAdminPin, id });
   }
 
-  // ==========================================
-  // الموردين ومرتجع الصيانة RMA (إضافة / تعديل / حذف)
-  // ==========================================
   function openPurchaseModal(prefill = {}) {
     const sel = document.getElementById('purProductSelect');
     sel.innerHTML = catalog.filter(p => p.kind !== 'service').map(p => `<option value="${p.name}">${p.name} (متاح: ${p.stock})</option>`).join('');
@@ -1992,9 +1962,6 @@
     }).join('') || `<tr><td colspan="4" style="color:#64748b;padding:12px;">لا توجد أجهزة في صيانة الشركات حالياً</td></tr>`;
   }
 
-  // ==========================================
-  // الفواتير (تعديل + حذف + مشاركة واتساب بيزنس)
-  // ==========================================
   function renderOldInvoicesTable() {
     document.getElementById('oldInvoicesBody').innerHTML = oldInvoices.map((inv, idx) => {
       const isDef = inv.orderType === 'deferred';
@@ -2056,9 +2023,6 @@
     enqueueServerSync({ type: 'delete_invoice', pin: sessionAdminPin, invoiceId: id });
   }
 
-  // ==========================================
-  // الكاشير والمايك (مهلة 2 ثانية + Gemini + تعديل الأسعار)
-  // ==========================================
   function requestAdminTab(tabName, btn) {
     if (tabName === 'pos') { switchTab('pos', btn); return; }
     if (isAdminUnlocked) { switchTab(tabName, btn); return; }
@@ -2336,9 +2300,6 @@
     openWhatsAppBusiness(inv.clientName, msg);
   }
 
-  // ==========================================
-  // التقارير المالية والتصدير
-  // ==========================================
   function setReportRange(range, btn) {
     currentReportRange = range;
     document.querySelectorAll('#tab-reports .filter-pill').forEach(b => b.classList.remove('active'));
@@ -2454,8 +2415,38 @@
   }
 
   // ==========================================
-  // الصوت والذكاء الاصطناعي (مهلة 2 ثانية 2000ms)
+  // الصوت الموحد للكاشير والمخزن (مراجع بالكامل)
   // ==========================================
+  function updateVoiceUiState(active, msgText) {
+    const posBtn = document.getElementById('micBtn');
+    const invBtn = document.getElementById('invMicBtn');
+    const invBox = document.getElementById('invVoiceStatus');
+
+    if (active) {
+      posBtn.classList.add('recording');
+      posBtn.innerText = '🛑 جاري الاستماع...';
+      invBtn.classList.add('recording');
+      invBtn.innerText = '🛑 جاري الاستماع...';
+      if (voiceContext === 'inventory') {
+        invBox.style.display = 'block';
+        invBox.innerText = msgText || "🎤 تكلم الآن... قل اسم الصنف والكمية والتكلفة";
+      }
+      document.getElementById('statusText').innerText = msgText || "🎤 تكلم الآن... (مهلة 2 ثانية)";
+    } else {
+      posBtn.classList.remove('recording');
+      posBtn.innerText = '🎙️ تحدث الآن';
+      invBtn.classList.remove('recording');
+      invBtn.innerText = '🎙️ إضافة بالصوت';
+      if (msgText) {
+        document.getElementById('statusText').innerText = msgText;
+        if (voiceContext === 'inventory') {
+          invBox.style.display = 'block';
+          invBox.innerText = msgText;
+        }
+      }
+    }
+  }
+
   function setupSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -2464,7 +2455,12 @@
     recognition.continuous = false;
     recognition.interimResults = true;
 
-    recognition.onstart = () => { document.getElementById('statusText').innerText = "🎤 تكلم الآن... (مهلة 2 ثانية)"; };
+    recognition.onstart = () => {
+      updateVoiceUiState(true, voiceContext === 'inventory'
+        ? "🎤 تكلم الآن... مثلاً: رسيفر سيناتور 999 10 قطعة بـ 500"
+        : "🎤 تكلم الآن... (مهلة 2 ثانية)");
+    };
+
     recognition.onresult = (e) => {
       clearTimeout(instantExecTimer);
       let interim = '', finalStr = '';
@@ -2475,40 +2471,61 @@
       if (finalStr) {
         processSmartVoiceCommand(finalStr);
       } else if (interim) {
-        document.getElementById('statusText').innerText = `🗣️ "${interim}"`;
+        const heardMsg = `🗣️ سمعت: "${interim}"`;
+        document.getElementById('statusText').innerText = heardMsg;
+        if (voiceContext === 'inventory') {
+          document.getElementById('invVoiceStatus').style.display = 'block';
+          document.getElementById('invVoiceStatus').innerText = heardMsg;
+        }
         instantExecTimer = setTimeout(() => {
           try { recognition.stop(); } catch (err) {}
           processSmartVoiceCommand(interim);
         }, 2000);
       }
     };
+
     recognition.onerror = (e) => {
       isRecording = false;
-      document.getElementById('micBtn').classList.remove('recording');
-      document.getElementById('micBtn').innerText = '🎙️ تحدث الآن';
-      if (e.error !== 'aborted') document.getElementById('statusText').innerText = `⚠️ تنبيه صوتي (${e.error})`;
+      updateVoiceUiState(false, e.error !== 'aborted' ? `⚠️ تنبيه صوتي (${e.error})` : "");
     };
+
     recognition.onend = () => {
       isRecording = false;
-      document.getElementById('micBtn').classList.remove('recording');
-      document.getElementById('micBtn').innerText = '🎙️ تحدث الآن';
+      updateVoiceUiState(false, "");
     };
   }
 
   function toggleVoice() {
-    if (!recognition) return document.getElementById('quickCmdInput').focus();
-    if (isRecording) { clearTimeout(instantExecTimer); recognition.stop(); }
-    else {
+    voiceContext = 'pos';
+    startOrStopRecognition();
+  }
+
+  function toggleInventoryVoice() {
+    voiceContext = 'inventory';
+    document.getElementById('invVoiceStatus').style.display = 'block';
+    startOrStopRecognition();
+  }
+
+  function startOrStopRecognition() {
+    if (!recognition) {
+      alert("⚠️ المتصفح لا يدعم المايك، استخدم خانة الكتابة السريعة.");
+      return;
+    }
+    if (isRecording) {
+      clearTimeout(instantExecTimer);
+      recognition.stop();
+    } else {
       try {
         isRecording = true;
-        document.getElementById('micBtn').classList.add('recording');
-        document.getElementById('micBtn').innerText = '🛑 جاري الاستماع...';
         recognition.start();
-      } catch (err) { isRecording = false; }
+      } catch (err) {
+        isRecording = false;
+      }
     }
   }
 
   function runTextCommand() {
+    voiceContext = 'pos';
     const input = document.getElementById('quickCmdInput');
     const text = input.value.trim();
     if (!text) return;
@@ -2516,9 +2533,82 @@
     processSmartVoiceCommand(text);
   }
 
+  // محلل ذكي مخصص لإضافة صنف للمخزن مع حماية أرقام الموديلات (999 / 8000 / 6060)
+  function fillInventoryFormFromSpeech(rawSpeech, aiNewProd = null) {
+    let name = "";
+    let qty = 0;
+    let cost = 0;
+
+    if (aiNewProd && aiNewProd.name) {
+      name = String(aiNewProd.name).trim();
+      qty = Number(aiNewProd.stock) || 0;
+      cost = Number(aiNewProd.cost) || 0;
+    } else {
+      let s = cleanEgyptianPhone(rawSpeech)
+        .replace(/^(?:صنف جديد|اضف صنف|أضف صنف|إضافة صنف|اضافة صنف)\s*/i, '')
+        .trim();
+
+      // استخراج السعر المرتبط بكلمة (بـ / بسعر / تكلفة / سعر / جنيه)
+      const priceRegex = /(?:بـ|بسعر|سعر|تكلفة|تكلفه|ب)\s*(\d+(?:\.\d+)?)\s*(?:جنيه|ج)?/i;
+      const pMatch = s.match(priceRegex);
+      if (pMatch) {
+        cost = Number(pMatch[1]);
+        s = s.replace(pMatch[0], ' ');
+      }
+
+      // استخراج الكمية المرتبطة بكلمة (قطعة / حبة / عدد / رصيد)
+      const qtyRegex = /(?:عدد|رصيد)?\s*(\d+)\s*(?:قطعة|قطعه|حبة|حبه|قطع|جهاز|اجهزة|أجهزة)/i;
+      const qMatch = s.match(qtyRegex);
+      if (qMatch) {
+        qty = Number(qMatch[1]);
+        s = s.replace(qMatch[0], ' ');
+      } else {
+        const qPrefix = s.match(/(?:عدد|رصيد)\s*(\d+)/i);
+        if (qPrefix) {
+          qty = Number(qPrefix[1]);
+          s = s.replace(qPrefix[0], ' ');
+        }
+      }
+
+      name = s.replace(/\s+/g, ' ').trim();
+    }
+
+    const applyToFields = () => {
+      if (name) {
+        document.getElementById('newProdName').value = name;
+        autoFillAliases('newProdName', 'newProdAliases');
+      }
+      if (qty > 0) document.getElementById('newProdStock').value = qty;
+      if (cost > 0) {
+        document.getElementById('newProdCost').value = cost;
+        autoCalculateTierPrices('newProd');
+      }
+      const statusMsg = `✅ تم تجهيز: ${name || 'الصنف'} | رصيد: ${qty} | تكلفة: ${cost} — راجع واضغط حفظ`;
+      document.getElementById('invVoiceStatus').style.display = 'block';
+      document.getElementById('invVoiceStatus').innerText = statusMsg;
+      document.getElementById('statusText').innerText = statusMsg;
+    };
+
+    if (!document.getElementById('tab-inventory').classList.contains('active')) {
+      requestAdminTab('inventory', document.querySelector('.nav-tab[data-tab="inventory"]'));
+      setTimeout(applyToFields, 200);
+    } else {
+      applyToFields();
+    }
+  }
+
   async function processSmartVoiceCommand(rawText) {
     const cleanedText = cleanEgyptianPhone(rawText);
-    document.getElementById('statusText').innerText = `🧠 جاري فهم: "${cleanedText}"...`;
+    const waitingMsg = `🧠 جاري تحليل: "${cleanedText}"...`;
+    document.getElementById('statusText').innerText = waitingMsg;
+    if (voiceContext === 'inventory') {
+      document.getElementById('invVoiceStatus').style.display = 'block';
+      document.getElementById('invVoiceStatus').innerText = waitingMsg;
+    }
+
+    // إذا ضغطت على مايك المخزن مباشرة، نجهز الصنف فوراً ونستعين بـ Gemini إن وجد
+    const isDirectInventory = (voiceContext === 'inventory');
+
     try {
       const compactProducts = catalog.map(p => ({ name: p.name, aliases: p.aliases, kind: p.kind }));
       const compactClients = clients.map(c => c.name);
@@ -2526,15 +2616,30 @@
 
       const res = await fetch(SCRIPT_URL, {
         method: 'POST',
-        body: JSON.stringify({ type: 'ai_parse_voice', text: cleanedText, products: compactProducts, clients: compactClients, suppliers: compactSuppliers })
+        body: JSON.stringify({
+          type: 'ai_parse_voice',
+          text: isDirectInventory ? ("صنف جديد " + cleanedText) : cleanedText,
+          products: compactProducts,
+          clients: compactClients,
+          suppliers: compactSuppliers
+        })
       });
       const json = await res.json();
       if (json.status === 'success' && json.data) {
-        applyAiParsedResult(json.data, cleanedText);
+        if (isDirectInventory || json.data.action === 'add_product') {
+          fillInventoryFormFromSpeech(cleanedText, json.data.newProduct);
+        } else {
+          applyAiParsedResult(json.data, cleanedText);
+        }
         return;
       }
     } catch (e) {}
-    parseVoiceCommandLocal(cleanedText);
+
+    if (isDirectInventory) {
+      fillInventoryFormFromSpeech(cleanedText, null);
+    } else {
+      parseVoiceCommandLocal(cleanedText);
+    }
   }
 
   function applyAiParsedResult(ai, rawText) {
@@ -2542,14 +2647,7 @@
     if (ai.action === 'submit') { submitInvoice(); return; }
     if (ai.action === 'collect') { openCollectModal(ai.clientName || '', ai.collectAmount || ''); return; }
     if (ai.action === 'add_product' && ai.newProduct && ai.newProduct.name) {
-      requestAdminTab('inventory', document.querySelector('.nav-tab[data-tab="inventory"]'));
-      setTimeout(() => {
-        document.getElementById('newProdName').value = ai.newProduct.name;
-        document.getElementById('newProdStock').value = Number(ai.newProduct.stock) || 0;
-        document.getElementById('newProdCost').value = Number(ai.newProduct.cost) || '';
-        autoFillAliases('newProdName', 'newProdAliases');
-        autoCalculateTierPrices('newProd');
-      }, 150);
+      fillInventoryFormFromSpeech(rawText, ai.newProduct);
       return;
     }
     if (ai.action === 'supplier_pay') { openPaySupplierModal(ai.supplierName || '', ai.supplierAmount || ''); return; }
@@ -2607,6 +2705,10 @@
 
   function parseVoiceCommandLocal(rawText) {
     let text = normalizeArabic(rawText);
+    if (text.startsWith('صنف جديد') || text.startsWith('اضف صنف') || text.startsWith('اضافه صنف')) {
+      fillInventoryFormFromSpeech(rawText, null);
+      return;
+    }
     if (text.includes('شحن') || text.includes('بريد') || text.includes('مؤجل')) setOrderMode('deferred');
     if (text.startsWith('تحصيل') || text.startsWith('قبض')) {
       const amtMatch = text.match(/(\d+)/);
@@ -2720,7 +2822,6 @@
     const snapshotItems = invoiceItems.map(i => ({ ...i, prodRef: null }));
     const editIdSnapshot = editingInvoiceId;
 
-    // 1. تحديث فوري في الذاكرة (0.01 ثانية) لسرعة البرق
     if (!editIdSnapshot) {
       snapshotItems.forEach(it => {
         if (it.kind !== 'service') {
@@ -2741,7 +2842,6 @@
     renderAllViews();
     showToast(orderType === 'deferred' ? "📦 تم حفظ أمر الشحن المؤجل فوراً!" : "✅ تم اعتماد الفاتورة وتحديث الحسابات فوراً!");
 
-    // 2. إرسال آمن في الخلفية عبر الطابور
     enqueueServerSync({
       type: 'save_invoice', editInvoiceId: editIdSnapshot, pin: sessionAdminPin,
       clientName, tier: tierLabel, paid, reminderDate, orderType, shippingNote, items: snapshotItems
