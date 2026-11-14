@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>نظام ماسا جروب المتكامل</title>
+  <style>
+    :root {
+      --primary: #0f172a; --secondary: #1e293b; --accent: #2563eb;
+      --success: #16a34a; --warning: #d97706; --danger: #dc2626; --bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { margin: 0; background: var(--bg); color: #1e293b; padding-top: 105px; padding-bottom: 230px; }
+
+    .app-header {
+      position: fixed; top: 0; left: 0; right: 0; background: var(--primary); color: #fff;
+      z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .brand-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; }
+    .brand-title { font-size: 16px; font-weight: 800; color: #38bdf8; }
+    .conn-badge { font-size: 11px; background: #1e293b; padding: 4px 10px; border-radius: 20px; color: #4ade80; }
+    
+    .nav-tabs { display: flex; background: var(--secondary); border-top: 1px solid #334155; }
+    .nav-tab {
+      flex: 1; padding: 10px 4px; text-align: center; font-size: 13px; font-weight: bold;
+      color: #94a3b8; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid transparent;
+    }
+    .nav-tab.active { color: #fff; border-bottom-color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+
+    .tab-content { display: none; padding: 14px; max-width: 900px; margin: 0 auto; }
+    .tab-content.active { display: block; }
+
+    .card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .card-title { font-size: 15px; font-weight: 800; margin-bottom: 10px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+    
+    .invoice-top-card { background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    .top-total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .header-total { font-size: 24px; font-weight: 900; color: #4ade80; }
+    .edit-banner { background: #f59e0b; color: #000; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; display: none; }
+    
+    .client-inputs { display: flex; gap: 8px; }
+    .client-inputs input, .client-inputs select {
+      padding: 10px; border-radius: 10px; border: none; font-size: 14px; font-weight: bold;
+    }
+    .client-inputs input { flex: 1; }
+    .balance-strip { font-size: 12px; color: #fbbf24; margin-top: 8px; font-weight: bold; }
+
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+    th { background: #e2e8f0; color: #0f172a; padding: 10px 6px; font-size: 13px; }
+    td { padding: 10px 6px; border-bottom: 1px solid #f1f5f9; text-align: center; font-size: 14px; }
+    .qty-btn { background: #e2e8f0; border: none; width: 28px; height: 28px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+    .btn-sm { padding: 6px 10px; border-radius: 8px; border: none; font-weight: bold; font-size: 12px; cursor: pointer; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: span 2; }
+    .form-group label { font-size: 12px; font-weight: bold; color: #475569; }
+    .form-group input, .form-group select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; }
+
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 2px solid #cbd5e1;
+      padding: 10px 14px; z-index: 200; box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+    }
+    .voice-fallback-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .voice-fallback-row input {
+      flex: 1; padding: 8px 12px; border: 1.5px solid #94a3b8; border-radius: 10px; font-size: 13px; background: #f8fafc;
+    }
+    .voice-fallback-row button {
+      background: #0f172a; color: #fff; border: none; padding: 0 14px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer;
+    }
+    .footer-totals { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-weight: bold; }
+    .pay-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .pay-row input { width: 110px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; font-weight: bold; text-align: center; }
+    .actions-row { display: flex; gap: 8px; }
+    .mic-btn {
+      flex: 2; background: var(--accent); color: #fff; border: none; padding: 14px; border-radius: 12px;
+      font-size: 15px; font-weight: bold; cursor: pointer;
+    }
+    .mic-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
+    .save-btn { flex: 1; background: var(--success); color: #fff; border: none; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <div class="app-header">
+    <div class="brand-bar">
+      <span class="brand-title">⚡ ماسا جروب للإلكترونيات</span>
+      <span class="conn-badge" id="connBadge">جاري الاتصال بالشيت...</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('pos', this)">🛒 الكاشير</button>
+      <button class="nav-tab" onclick="switchTab('inventory', this)">📦 المخزن</button>
+      <button class="nav-tab" onclick="switchTab('invoices', this)">🧾 الفواتير</button>
+      <button class="nav-tab" onclick="switchTab('settings', this)">⚙️ التصفير</button>
+    </div>
+  </div>
+
+  <!-- 1. الكاشير -->
+  <div id="tab-pos" class="tab-content active">
+    <div class="invoice-top-card">
+      <div class="top-total-row">
+        <div>
+          <span style="font-size:12px;color:#94a3b8;">إجمالي الفاتورة الحالي</span>
+          <div class="edit-banner" id="editModeBanner">✏️ وضع تعديل الفاتورة: <span id="editInvIdText"></span></div>
+        </div>
+        <div class="header-total" id="headerTotal">0 ج.م</div>
+      </div>
+      <div class="client-inputs">
+        <input type="text" id="clientName" placeholder="اسم العميل أو الفني..." oninput="checkClientBalance()">
+        <select id="priceTier" onchange="recalculateAllPrices()">
+          <option value="retail">قطاعي</option>
+          <option value="technician">فني</option>
+          <option value="wholesale">جملة</option>
+        </select>
+      </div>
+      <div class="balance-strip" id="clientBalanceInfo">الرصيد السابق: 0 ج.م | الإجمالي الكلي: 0 ج.م</div>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <table>
+        <thead>
+          <tr>
+            <th>الصنف</th>
+            <th>الكمية</th>
+            <th>السعر</th>
+            <th>الإجمالي</th>
+            <th>حذف</th>
+          </tr>
+        </thead>
+        <tbody id="invoiceBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 2. المخزن -->
+  <div id="tab-inventory" class="tab-content">
+    <div class="card">
+      <div class="card-title">➕ إضافة صنف جديد للمخزن</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>اسم الصنف (مثال: سيناتور 999)</label>
+          <input type="text" id="newProdName" placeholder="اكتب اسم الصنف...">
+        </div>
+        <div class="form-group full">
+          <label>المرادفات الصوتية (مفصولة بفاصلة ليسهل فهمها بالصوت)</label>
+          <input type="text" id="newProdAliases" placeholder="مثال: 999، سيناتور بلوتوث">
+        </div>
+        <div class="form-group">
+          <label>سعر الشراء (التكلفة)</label>
+          <input type="number" id="newProdCost" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>الرصيد الافتتاحي (الكمية)</label>
+          <input type="number" id="newProdStock" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>سعر الجملة</label>
+          <input type="number" id="newProdWholesale" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>سعر الفني</label>
+          <input type="number" id="newProdTech" placeholder="0">
+        </div>
+        <div class="form-group full">
+          <label>سعر القطاعي</label>
+          <input type="number" id="newProdRetail" placeholder="0">
+        </div>
+        <div class="form-group full">
+          <button onclick="addNewProduct()" style="background:var(--accent);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:bold;font-size:15px;cursor:pointer;">🔐 حفظ الصنف في الشيت</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div style="padding:12px;font-weight:bold;">📋 قائمة أصناف المخزن الحالية</div>
+      <table>
+        <thead>
+          <tr>
+            <th>الصنف</th>
+            <th>جملة</th>
+            <th>فني</th>
+            <th>قطاعي</th>
+            <th>الرصيد</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. الفواتير -->
+  <div id="tab-invoices" class="tab-content">
+    <div class="card" style="padding:0;">
+      <div style="padding:12px;font-weight:bold;">🧾 الفواتير المعتمدة (اضغط تعديل لفتح الفاتورة)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>رقم الفاتورة</th>
+            <th>العميل</th>
+            <th>الإجمالي</th>
+            <th>المتبقي</th>
+            <th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody id="oldInvoicesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4. التصفير -->
+  <div id="tab-settings" class="tab-content">
+    <div class="card">
+      <div class="card-title" style="color:var(--danger);">⚠️ منطقة تصفير البيانات (محمية برقم سري)</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:14px;">
+        <button onclick="resetSheet('clear_products')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:14px;border-radius:10px;font-weight:bold;font-size:14px;cursor:pointer;">
+          🔐 حذف كل أصناف المخزن (البدء بمخزن فارغ)
+        </button>
+        <button onclick="resetSheet('clear_invoices')" style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d;padding:14px;border-radius:10px;font-weight:bold;font-size:14px;cursor:pointer;">
+          🔐 مسح كل الفواتير وحسابات العملاء التجريبية
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- الفوتر السفلي -->
+  <div class="bottom-bar" id="posBottomBar">
+    <div id="statusText" style="font-size:12px;color:#475569;text-align:center;margin-bottom:6px;font-weight:bold;">جاهز للاستماع...</div>
+    
+    <div class="voice-fallback-row">
+      <input type="text" id="quickCmdInput" placeholder="أو اضغط هنا وتكلم بمايك الكيبورد: ضيف 2 سيناتور 999..." onkeypress="if(event.key==='Enter') runTextCommand()">
+      <button onclick="runTextCommand()">تنفيذ ⚡</button>
+    </div>
+
+    <div class="footer-totals">
+      <span>الإجمالي: <strong id="footerTotal" style="font-size:19px;color:var(--primary);">0 ج.م</strong></span>
+      <span id="remainingLabel" style="color:var(--danger);">المتبقي: 0 ج.م</span>
+    </div>
+    <div class="pay-row">
+      <label style="font-size:13px;font-weight:bold;">المدفوع:</label>
+      <input type="number" id="paidAmount" placeholder="0" oninput="updateTotals()">
+      <button class="btn-sm" onclick="setFullPaid()" style="background:#e2e8f0;">خالص كاش</button>
+      <button class="btn-sm" onclick="clearInvoice()" style="background:#fee2e2;color:var(--danger);">فاتورة جديدة</button>
+    </div>
+    <div class="actions-row">
+      <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎙️ تحدث لإضافة أصناف</button>
+      <button class="save-btn" onclick="submitInvoice()">✅ اعتماد</button>
+    </div>
+  </div>
+
+  <!-- نافذة الرقم السري -->
+  <div id="pinModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.8);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:#fff;padding:24px;border-radius:16px;width:90%;max-width:340px;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+      <div style="font-size:32px;margin-bottom:8px;">🔐</div>
+      <h3 style="margin:0 0 8px;color:#0f172a;">عملية محمية برقم سري</h3>
+      <p id="pinActionDesc" style="font-size:13px;color:#64748b;margin-bottom:16px;">أدخل الرقم السري للإدارة للمتابعة</p>
+      <input type="password" id="pinInput" inputmode="numeric" placeholder="****" style="width:100%;padding:12px;font-size:22px;text-align:center;letter-spacing:8px;border:2px solid #cbd5e1;border-radius:12px;margin-bottom:16px;">
+      <div style="display:flex;gap:8px;">
+        <button onclick="confirmPinAction()" style="flex:1;background:#16a34a;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:bold;font-size:15px;">تأكيد</button>
+        <button onclick="closePinModal()" style="flex:1;background:#e2e8f0;color:#334155;border:none;padding:12px;border-radius:10px;font-weight:bold;font-size:15px;">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQ7r2Htn8Ct6LyfxeFgf9GZdLxWm9WEJJhz_mgTPVQ142X4UmzIDN5xntQ5HOHYE47/exec";
+  const GEMINI_API_KEY = "AQ.Ab8RN6KnuZEU2b4nK7lAl_dH5cGftbwyEa5ZguhQvqd72AoD-w";
+
+  let catalog = [];
+  let clients = [];
+  let oldInvoices = [];
+  let invoiceItems = [];
+  let editingInvoiceId = null;
+  let pendingCallback = null;
+  let recognition;
+  let isRecording = false;
+
+  window.onload = async () => {
+    await loadAllData();
+    setupSpeech();
+  };
+
+  async function loadAllData() {
+    try {
+      const res = await fetch(`${SCRIPT_URL}?action=init`);
+      const data = await res.json();
+      if (data.status === 'success') {
+        catalog = data.products;
+        clients = data.clients;
+        oldInvoices = data.invoices || [];
+        document.getElementById('connBadge').innerText = `✅ متصل (${catalog.length} صنف)`;
+        renderInventoryTable();
+        renderOldInvoicesTable();
+      }
+    } catch (e) {
+      document.getElementById('connBadge').innerText = "⚠️ خطأ في الاتصال";
+    }
+  }
+
+  function switchTab(tabName, btn) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tabName).classList.add('active');
+    btn.classList.add('active');
+    document.getElementById('posBottomBar').style.display = (tabName === 'pos') ? 'block' : 'none';
+  }
+
+  function requestPin(description, callback) {
+    document.getElementById('pinActionDesc').innerText = description;
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinModal').style.display = 'flex';
+    document.getElementById('pinInput').focus();
+    pendingCallback = callback;
+  }
+
+  function closePinModal() {
+    document.getElementById('pinModal').style.display = 'none';
+    pendingCallback = null;
+  }
+
+  function confirmPinAction() {
+    const pin = document.getElementById('pinInput').value.trim();
+    if (!pin) return alert("اكتب الرقم السري أولاً");
+    const cb = pendingCallback;
+    closePinModal();
+    if (cb) cb(pin);
+  }
+
+  function renderInventoryTable() {
+    document.getElementById('inventoryTableBody').innerHTML = catalog.map(p => `
+      <tr>
+        <td style="text-align:right;font-weight:bold;">${p.name}</td>
+        <td>${p.wholesale}</td>
+        <td>${p.technician}</td>
+        <td>${p.retail}</td>
+        <td style="font-weight:bold;color:${p.stock <= 2 ? '#dc2626' : '#16a34a'};">${p.stock}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderOldInvoicesTable() {
+    document.getElementById('oldInvoicesBody').innerHTML = oldInvoices.map((inv, idx) => `
+      <tr>
+        <td style="font-weight:bold;font-size:12px;">${inv.id}</td>
+        <td>${inv.clientName}</td>
+        <td style="font-weight:bold;">${inv.total}</td>
+        <td style="color:${inv.remaining > 0 ? '#dc2626' : '#16a34a'};">${inv.remaining}</td>
+        <td><button class="btn-sm" style="background:#fef3c7;color:#b45309;" onclick="loadInvoiceForEdit(${idx})">🔐 تعديل</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function loadInvoiceForEdit(idx) {
+    const inv = oldInvoices[idx];
+    requestPin(`أدخل الرقم السري لتعديل الفاتورة ${inv.id}`, (pin) => {
+      window.currentEditPin = pin;
+      editingInvoiceId = inv.id;
+      document.getElementById('editModeBanner').style.display = 'inline-block';
+      document.getElementById('editInvIdText').innerText = inv.id;
+      document.getElementById('clientName').value = inv.clientName;
+      document.getElementById('paidAmount').value = inv.paid;
+      const tierMap = { 'قطاعي': 'retail', 'فني': 'technician', 'جملة': 'wholesale' };
+      document.getElementById('priceTier').value = tierMap[inv.tier] || 'retail';
+      invoiceItems = inv.items.map(item => ({
+        name: item.name, qty: item.qty, price: item.price,
+        prodRef: catalog.find(p => p.name === item.name)
+      }));
+      renderTable();
+      switchTab('pos', document.querySelectorAll('.nav-tab')[0]);
+    });
+  }
+
+  function addNewProduct() {
+    const name = document.getElementById('newProdName').value.trim();
+    if (!name) return alert("اكتب اسم الصنف أولاً");
+    requestPin(`أدخل الرقم السري لإضافة "${name}" للمخزن`, async (pin) => {
+      const payload = {
+        type: 'add_product',
+        pin: pin,
+        name: name,
+        aliases: document.getElementById('newProdAliases').value.trim(),
+        cost: document.getElementById('newProdCost').value,
+        stock: document.getElementById('newProdStock').value,
+        wholesale: document.getElementById('newProdWholesale').value,
+        technician: document.getElementById('newProdTech').value,
+        retail: document.getElementById('newProdRetail').value
+      };
+      const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.status === 'error') return alert(data.message);
+      alert("✅ تم إضافة الصنف بنجاح!");
+      document.querySelectorAll('#tab-inventory input').forEach(i => i.value = '');
+      await loadAllData();
+    });
+  }
+
+  function resetSheet(actionType) {
+    const desc = actionType === 'clear_products'
+      ? "تحذير: سيتم مسح جميع أصناف المخزن! أدخل الرقم السري:"
+      : "تحذير: سيتم مسح جميع الفواتير وحسابات العملاء! أدخل الرقم السري:";
+    requestPin(desc, async (pin) => {
+      const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: actionType, pin: pin }) });
+      const data = await res.json();
+      if (data.status === 'error') return alert(data.message);
+      alert("✅ تم التصفير بنجاح!");
+      await loadAllData();
+    });
+  }
+
+  function setupSpeech() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      document.getElementById('statusText').innerText = "⚠️ استخدم زر المايك في كيبورد الموبايل في الخانة بالأسفل";
+      return;
+    }
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ar-EG';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      document.getElementById('statusText').innerText = "🎤 تكلم الآن... أنا أسمعك";
+    };
+
+    recognition.onresult = async (e) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+      for (let i = e.resultIndex; i < e.results.length; ++i) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        } else {
+          interimTranscript += e.results[i][0].transcript;
+        }
+      }
+      if (interimTranscript) {
+        document.getElementById('statusText').innerText = `🗣️ "${interimTranscript}"`;
+      }
+      if (finalTranscript) {
+        document.getElementById('statusText').innerText = `⏳ جاري تحليل: "${finalTranscript}"`;
+        await parseVoiceCommand(finalTranscript);
+      }
+    };
+
+    recognition.onerror = (e) => {
+      isRecording = false;
+      document.getElementById('micBtn').classList.remove('recording');
+      document.getElementById('micBtn').innerText = '🎙️ تحدث لإضافة أصناف';
+      document.getElementById('statusText').innerText = `⚠️ تنبيه صوتي (${e.error}) - استخدم الخانة بالأسفل`;
+    };
+
+    recognition.onend = () => {
+      isRecording = false;
+      document.getElementById('micBtn').classList.remove('recording');
+      document.getElementById('micBtn').innerText = '🎙️ تحدث لإضافة أصناف';
+    };
+  }
+
+  function toggleVoice() {
+    if (!recognition) return document.getElementById('quickCmdInput').focus();
+    if (isRecording) {
+      recognition.stop();
+    } else {
+      try {
+        isRecording = true;
+        document.getElementById('micBtn').classList.add('recording');
+        document.getElementById('micBtn').innerText = '🛑 جاري الاستماع...';
+        recognition.start();
+      } catch (err) {
+        isRecording = false;
+        document.getElementById('micBtn').classList.remove('recording');
+        document.getElementById('micBtn').innerText = '🎙️ تحدث لإضافة أصناف';
+      }
+    }
+  }
+
+  async function runTextCommand() {
+    const input = document.getElementById('quickCmdInput');
+    const text = input.value.trim();
+    if (!text) return;
+    document.getElementById('statusText').innerText = `⏳ جاري تحليل: "${text}"`;
+    input.value = '';
+    await parseVoiceCommand(text);
+  }
+
+  async function parseVoiceCommand(text) {
+    const catalogNames = catalog.map(p => `${p.name} (${p.aliases})`).join(' | ');
+    const prompt = `حلل جملة المبيعات بالعامية المصرية لشركة ماسا جروب وأرجع JSON فقط:
+    الأصناف المتاحة: [${catalogNames}]
+    الجملة: "${text}"
+    JSON: {"action":"add"|"remove"|"clear"|"approve", "clientName":string|null, "tier":"wholesale"|"technician"|"retail"|null, "paid":number|null, "items":[{"matchedName":string, "qty":number}]}`;
+
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const result = await res.json();
+      if (result.error) {
+        document.getElementById('statusText').innerText = `❌ خطأ في مفتاح API: ${result.error.message}`;
+        return;
+      }
+      const cmd = JSON.parse(result.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim());
+
+      if (cmd.clientName) { document.getElementById('clientName').value = cmd.clientName; checkClientBalance(); }
+      if (cmd.tier) { document.getElementById('priceTier').value = cmd.tier; recalculateAllPrices(); }
+      if (cmd.paid !== null) document.getElementById('paidAmount').value = cmd.paid;
+      if (cmd.action === 'clear') return clearInvoice();
+      if (cmd.action === 'approve') return submitInvoice();
+
+      if (cmd.items && cmd.items.length > 0) {
+        const tier = document.getElementById('priceTier').value;
+        let addedCount = 0;
+        cmd.items.forEach(item => {
+          const prod = catalog.find(p => p.name === item.matchedName);
+          if (prod) {
+            addedCount++;
+            if (cmd.action === 'remove') invoiceItems = invoiceItems.filter(i => i.name !== prod.name);
+            else {
+              const ex = invoiceItems.find(i => i.name === prod.name);
+              if (ex) ex.qty += item.qty;
+              else invoiceItems.push({ name: prod.name, qty: item.qty, price: prod[tier], prodRef: prod });
+            }
+          }
+        });
+        renderTable();
+        document.getElementById('statusText').innerText = addedCount > 0 ? "✅ تم إضافة الأصناف للفاتورة" : "⚠️ لم يتم العثور على الصنف في المخزن";
+      } else {
+        document.getElementById('statusText').innerText = "✅ تم تحديث بيانات الفاتورة";
+      }
+    } catch (e) {
+      document.getElementById('statusText').innerText = "❌ تعذر التحليل، تأكد من صحة مفتاح Gemini API";
+    }
+  }
+
+  function recalculateAllPrices() {
+    const tier = document.getElementById('priceTier').value;
+    invoiceItems.forEach(i => { if (i.prodRef) i.price = i.prodRef[tier]; });
+    renderTable();
+  }
+
+  function renderTable() {
+    document.getElementById('invoiceBody').innerHTML = invoiceItems.map((item, idx) => `
+      <tr>
+        <td style="text-align:right;font-weight:bold;">${item.name}</td>
+        <td>
+          <button class="qty-btn" onclick="changeQty(${idx},-1)">-</button>
+          <span style="margin:0 6px;font-weight:bold;">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+        </td>
+        <td>${item.price}</td>
+        <td style="font-weight:bold;">${item.qty * item.price}</td>
+        <td><button class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="removeItem(${idx})">✕</button></td>
+      </tr>
+    `).join('');
+    updateTotals();
+  }
+
+  function changeQty(idx, d) { invoiceItems[idx].qty += d; if (invoiceItems[idx].qty <= 0) invoiceItems.splice(idx, 1); renderTable(); }
+  function removeItem(idx) { invoiceItems.splice(idx, 1); renderTable(); }
+
+  function checkClientBalance() {
+    const name = document.getElementById('clientName').value.trim();
+    const found = clients.find(c => c.name.includes(name) && name.length > 1);
+    if (found) {
+      document.getElementById('priceTier').value = found.tier === 'فني' ? 'technician' : (found.tier === 'جملة' ? 'wholesale' : 'retail');
+      recalculateAllPrices();
+    }
+    updateTotals();
+  }
+
+  function updateTotals() {
+    const total = invoiceItems.reduce((s, i) => s + (i.qty * i.price), 0);
+    const paid = Number(document.getElementById('paidAmount').value) || 0;
+    const rem = total - paid;
+    document.getElementById('headerTotal').innerText = `${total.toLocaleString()} ج.م`;
+    document.getElementById('footerTotal').innerText = `${total.toLocaleString()} ج.م`;
+    document.getElementById('remainingLabel').innerText = `المتبقي: ${rem.toLocaleString()} ج.م`;
+    const name = document.getElementById('clientName').value.trim();
+    const found = clients.find(c => c.name === name);
+    const prev = found ? found.balance : 0;
+    document.getElementById('clientBalanceInfo').innerText = `الرصيد السابق: ${prev.toLocaleString()} ج.م | الإجمالي الكلي: ${(prev + rem).toLocaleString()} ج.م`;
+  }
+
+  function setFullPaid() { document.getElementById('paidAmount').value = invoiceItems.reduce((s, i) => s + (i.qty * i.price), 0); updateTotals(); }
+  
+  function clearInvoice() {
+    invoiceItems = []; editingInvoiceId = null; window.currentEditPin = null;
+    document.getElementById('editModeBanner').style.display = 'none';
+    document.getElementById('paidAmount').value = '';
+    renderTable();
+  }
+
+  async function submitInvoice() {
+    if (invoiceItems.length === 0) return alert("الفاتورة فارغة!");
+    const clientName = document.getElementById('clientName').value.trim() || "عميل نقدي";
+    const tierMap = { retail: 'قطاعي', technician: 'فني', wholesale: 'جملة' };
+    document.getElementById('statusText').innerText = "⏳ جاري الحفظ في الشيت...";
+
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'save_invoice',
+        editInvoiceId: editingInvoiceId,
+        pin: window.currentEditPin || "",
+        clientName: clientName,
+        tier: tierMap[document.getElementById('priceTier').value],
+        paid: Number(document.getElementById('paidAmount').value) || 0,
+        items: invoiceItems
+      })
+    });
+    const data = await res.json();
+    if (data.status === 'error') return alert(data.message);
+    alert(`✅ تم حفظ الفاتورة ${data.invoiceId} بنجاح!`);
+    clearInvoice();
+    await loadAllData();
+  }
+</script>
+</body>
+</html>
