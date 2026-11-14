@@ -10,7 +10,7 @@
       --success: #16a34a; --warning: #d97706; --danger: #dc2626; --bg: #f1f5f9;
     }
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-    body { margin: 0; background: var(--bg); color: #1e293b; padding-top: 105px; padding-bottom: 230px; }
+    body { margin: 0; background: var(--bg); color: #1e293b; padding-top: 105px; padding-bottom: 240px; }
 
     .app-header {
       position: fixed; top: 0; left: 0; right: 0; background: var(--primary); color: #fff;
@@ -44,6 +44,10 @@
     }
     .client-inputs input { flex: 1; }
     .balance-strip { font-size: 12px; color: #fbbf24; margin-top: 8px; font-weight: bold; }
+
+    .quick-add-bar { display: flex; gap: 6px; margin-bottom: 10px; }
+    .quick-add-bar select { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; font-weight: bold; background: #fff; }
+    .quick-add-bar button { background: var(--primary); color: #fff; border: none; padding: 0 14px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; }
 
     table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
     th { background: #e2e8f0; color: #0f172a; padding: 10px 6px; font-size: 13px; }
@@ -115,6 +119,13 @@
         </select>
       </div>
       <div class="balance-strip" id="clientBalanceInfo">الرصيد السابق: 0 ج.م | الإجمالي الكلي: 0 ج.م</div>
+    </div>
+
+    <div class="quick-add-bar">
+      <select id="manualProductSelect">
+        <option value="">-- اختر صنفاً للإضافة السريعة --</option>
+      </select>
+      <button onclick="addManualProduct()">➕ إضافة</button>
     </div>
 
     <div class="card" style="padding:0;">
@@ -228,7 +239,7 @@
     <div id="statusText" style="font-size:12px;color:#475569;text-align:center;margin-bottom:6px;font-weight:bold;">جاهز للاستماع...</div>
     
     <div class="voice-fallback-row">
-      <input type="text" id="quickCmdInput" placeholder="أو اكتب/تكلم هنا: ضيف 2 سيناتور 999 لمحمود فني" onkeypress="if(event.key==='Enter') runTextCommand()">
+      <input type="text" id="quickCmdInput" placeholder="مثال: ضيف 10 سيناتور 999 لحساب أحمد..." onkeypress="if(event.key==='Enter') runTextCommand()">
       <button onclick="runTextCommand()">تنفيذ ⚡</button>
     </div>
 
@@ -290,10 +301,29 @@
         document.getElementById('connBadge').innerText = `✅ متصل (${catalog.length} صنف)`;
         renderInventoryTable();
         renderOldInvoicesTable();
+        populateManualSelect();
       }
     } catch (e) {
       document.getElementById('connBadge').innerText = "⚠️ خطأ في الاتصال";
     }
+  }
+
+  function populateManualSelect() {
+    const sel = document.getElementById('manualProductSelect');
+    sel.innerHTML = '<option value="">-- اختر صنفاً للإضافة السريعة --</option>' +
+      catalog.map((p, i) => `<option value="${i}">${p.name} (متاح: ${p.stock})</option>`).join('');
+  }
+
+  function addManualProduct() {
+    const idx = document.getElementById('manualProductSelect').value;
+    if (idx === "") return;
+    const prod = catalog[Number(idx)];
+    const tier = document.getElementById('priceTier').value;
+    const ex = invoiceItems.find(i => i.name === prod.name);
+    if (ex) ex.qty += 1;
+    else invoiceItems.push({ name: prod.name, qty: 1, price: prod[tier], prodRef: prod });
+    renderTable();
+    document.getElementById('manualProductSelect').value = "";
   }
 
   function switchTab(tabName, btn) {
@@ -479,13 +509,29 @@
     parseVoiceCommandLocal(text);
   }
 
-  // محرك تحليل الأوامر الصوتية باللهجة المصرية الفوري (بدون الحاجة لأي API خارجي)
+  // توحيد الحروف العربية وتحويل النطق العامي للأرقام والموديلات
   function normalizeArabic(str) {
     return String(str || '')
       .replace(/[أإآ]/g, 'ا')
       .replace(/ة/g, 'ه')
       .replace(/ى/g, 'ي')
       .replace(/[\u064B-\u065F]/g, '')
+      .replace(/(?:ثلاث|تلات|تلت)\s*تسعات/g, '999')
+      .replace(/(?:ثلاث|تلات|تلت)\s*تمانيات/g, '888')
+      .replace(/(?:ثلاث|تلات|تلت)\s*سبعات/g, '777')
+      .replace(/(?:ثلاث|تلات|تلت)\s*ستات/g, '666')
+      .replace(/(?:ثلاث|تلات|تلت)\s*خمسات/g, '555')
+      .replace(/تسعميه|تسعمائه/g, '900')
+      .replace(/تمنميه|ثمانمائه/g, '800')
+      .replace(/سبعميه|سبعمائه/g, '700')
+      .replace(/ستميه|ستمائه/g, '600')
+      .replace(/خمسميه|خمسمائه/g, '500')
+      .replace(/ربعميه|ربعمائه/g, '400')
+      .replace(/تلتميه|ثلاثمائه/g, '300')
+      .replace(/ميتين|مائتين/g, '200')
+      .replace(/ميه|مائه/g, '100')
+      .replace(/الفين/g, '2000')
+      .replace(/الف/g, '1000')
       .toLowerCase()
       .trim();
   }
@@ -533,32 +579,33 @@
       }
     }
 
-    // 4. استخراج اسم العميل (المسجلين مسبقاً أو بعد كلمة لـ / عميل / باسم)
+    // 4. استخراج اسم العميل (أوتوماتيك سواء مسجل مسبقاً أو عميل جديد غريب)
     let matchedClient = clients.find(c => text.includes(normalizeArabic(c.name)) && c.name.length > 2);
     if (matchedClient) {
       document.getElementById('clientName').value = matchedClient.name;
       checkClientBalance();
       actionsDone.push(`العميل: ${matchedClient.name}`);
     } else {
-      const clientRegex = /(?:للعميل|للفني|عميل|باسم|لـ|ل)\s+([\u0600-\u06FF\s]{3,25})/;
+      // يلتقط أي اسم بعد: لحساب / على حساب / للعميل / للفني / عميل / باسم / لـ / ل
+      const clientRegex = /(?:لحساب|على حساب|علي حساب|للعميل|للفني|عميل|باسم|لـ|ل)\s+([\u0600-\u06FF\s]{2,30})/;
       const cMatch = rawText.match(clientRegex);
       if (cMatch) {
         let extractedName = cMatch[1]
           .replace(/(جملة|فني|قطاعي|خالص|كاش|دفع.*)/g, '')
           .trim();
-        if (extractedName.length >= 3) {
+        if (extractedName.length >= 2) {
           document.getElementById('clientName').value = extractedName;
           checkClientBalance();
-          actionsDone.push(`العميل: ${extractedName}`);
+          actionsDone.push(`عميل جديد: ${extractedName}`);
         }
       }
     }
 
-    // 5. تحويل الأرقام المكتوبة بالحروف لأرقام
+    // 5. تحويل الكميات المكتوبة بالحروف لأرقام
     const wordNums = {
       'واحد': '1', 'واحده': '1', 'اتنين': '2', 'اثنين': '2', 'تلاته': '3', 'ثلاثه': '3',
       'اربعه': '4', 'خمسه': '5', 'سته': '6', 'سبعه': '7', 'تمانيه': '8', 'ثمانيه': '8',
-      'تسعه': '9', 'عشره': '10', 'دسته': '12'
+      'تسعه': '9', 'عشره': '10', 'حداشر': '11', 'اتناشر': '12', 'دسته': '12', 'عشرين': '20'
     };
     let textWithNums = text;
     Object.keys(wordNums).forEach(w => {
@@ -568,26 +615,37 @@
     const isRemove = text.includes('امسح') || text.includes('شيل') || text.includes('احذف') || text.includes('الغي');
     const tier = document.getElementById('priceTier').value;
 
-    // 6. مطابقة الأصناف من المخزن (الاسم الأساسي + المرادفات)
+    // 6. مطابقة الأصناف من المخزن (مطابقة كاملة + مطابقة جزئية بالكلمات المفتاحية)
     let matchedProducts = [];
     catalog.forEach(prod => {
       const candidates = [prod.name, ...(String(prod.aliases || '').split(/[,،|]/))]
         .map(s => normalizeArabic(s))
         .filter(s => s.length >= 2);
 
-      // ترتيب المرشحات من الأطول للأقصر لتجنب التداخل
       candidates.sort((a, b) => b.length - a.length);
 
+      let foundAlias = null;
       for (let alias of candidates) {
-        const idx = textWithNums.indexOf(alias);
-        if (idx !== -1) {
-          // البحث عن رقم قبل الصنف مباشرة (الكمية)
-          const beforeText = textWithNums.substring(Math.max(0, idx - 12), idx).trim();
-          const qtyMatch = beforeText.match(/(\d+)\s*$/);
-          const qty = qtyMatch ? Number(qtyMatch[1]) : 1;
-          matchedProducts.push({ prod, qty });
+        if (textWithNums.includes(alias)) {
+          foundAlias = alias;
           break;
         }
+      }
+
+      // بحث مرن بالكلمات المشتركة إذا لم يطابق الاسم حرفياً (مثل: سيناتور + 999)
+      if (!foundAlias) {
+        const prodWords = normalizeArabic(prod.name).split(/\s+/).filter(w => w.length >= 2);
+        if (prodWords.length >= 2 && prodWords.every(w => textWithNums.includes(w))) {
+          foundAlias = prodWords[0];
+        }
+      }
+
+      if (foundAlias) {
+        const idx = textWithNums.indexOf(foundAlias);
+        const beforeText = textWithNums.substring(Math.max(0, idx - 15), idx).trim();
+        const qtyMatch = beforeText.match(/(\d+)\s*$/);
+        const qty = qtyMatch ? Number(qtyMatch[1]) : 1;
+        matchedProducts.push({ prod, qty });
       }
     });
 
@@ -607,9 +665,9 @@
     }
 
     if (actionsDone.length > 0) {
-      document.getElementById('statusText').innerText = `✅ تم تنفيذ: ${actionsDone.join(' | ')}`;
+      document.getElementById('statusText').innerText = `✅ تم: ${actionsDone.join(' | ')}`;
     } else {
-      document.getElementById('statusText').innerText = `⚠️ سمعت: "${rawText}" — لم يطابق اسماً في المخزن`;
+      document.getElementById('statusText').innerText = `⚠️ سمعت: "${rawText}" — تأكد من اسم الصنف في المخزن`;
     }
   }
 
@@ -641,7 +699,7 @@
 
   function checkClientBalance() {
     const name = document.getElementById('clientName').value.trim();
-    const found = clients.find(c => c.name.includes(name) && name.length > 1);
+    const found = clients.find(c => normalizeArabic(c.name) === normalizeArabic(name) && name.length > 1);
     if (found) {
       document.getElementById('priceTier').value = found.tier === 'فني' ? 'technician' : (found.tier === 'جملة' ? 'wholesale' : 'retail');
       recalculateAllPrices();
@@ -657,9 +715,10 @@
     document.getElementById('footerTotal').innerText = `${total.toLocaleString()} ج.م`;
     document.getElementById('remainingLabel').innerText = `المتبقي: ${rem.toLocaleString()} ج.م`;
     const name = document.getElementById('clientName').value.trim();
-    const found = clients.find(c => c.name === name);
+    const found = clients.find(c => normalizeArabic(c.name) === normalizeArabic(name));
     const prev = found ? found.balance : 0;
-    document.getElementById('clientBalanceInfo').innerText = `الرصيد السابق: ${prev.toLocaleString()} ج.م | الإجمالي الكلي: ${(prev + rem).toLocaleString()} ج.م`;
+    const statusTag = found ? `الرصيد السابق: ${prev.toLocaleString()} ج.م` : (name ? '🆕 عميل جديد (سيتم تسجيله تلقائياً)' : 'الرصيد السابق: 0 ج.م');
+    document.getElementById('clientBalanceInfo').innerText = `${statusTag} | الإجمالي الكلي: ${(prev + rem).toLocaleString()} ج.م`;
   }
 
   function setFullPaid() { document.getElementById('paidAmount').value = invoiceItems.reduce((s, i) => s + (i.qty * i.price), 0); updateTotals(); }
@@ -668,32 +727,42 @@
     invoiceItems = []; editingInvoiceId = null; window.currentEditPin = null;
     document.getElementById('editModeBanner').style.display = 'none';
     document.getElementById('paidAmount').value = '';
+    document.getElementById('clientName').value = '';
     renderTable();
   }
 
   async function submitInvoice() {
-    if (invoiceItems.length === 0) return alert("الفاتورة فارغة!");
+    if (invoiceItems.length === 0) return alert("الفاتورة فارغة! أضف صنفاً واحداً على الأقل.");
     const clientName = document.getElementById('clientName').value.trim() || "عميل نقدي";
     const tierMap = { retail: 'قطاعي', technician: 'فني', wholesale: 'جملة' };
     document.getElementById('statusText').innerText = "⏳ جاري الحفظ في الشيت...";
 
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        type: 'save_invoice',
-        editInvoiceId: editingInvoiceId,
-        pin: window.currentEditPin || "",
-        clientName: clientName,
-        tier: tierMap[document.getElementById('priceTier').value],
-        paid: Number(document.getElementById('paidAmount').value) || 0,
-        items: invoiceItems
-      })
-    });
-    const data = await res.json();
-    if (data.status === 'error') return alert(data.message);
-    alert(`✅ تم حفظ الفاتورة ${data.invoiceId} بنجاح!`);
-    clearInvoice();
-    await loadAllData();
+    try {
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'save_invoice',
+          editInvoiceId: editingInvoiceId,
+          pin: window.currentEditPin || "",
+          clientName: clientName,
+          tier: tierMap[document.getElementById('priceTier').value],
+          paid: Number(document.getElementById('paidAmount').value) || 0,
+          items: invoiceItems
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'error') {
+        document.getElementById('statusText').innerText = `❌ ${data.message}`;
+        return alert(data.message);
+      }
+      alert(`✅ تم حفظ الفاتورة ${data.invoiceId} باسم "${clientName}" بنجاح!`);
+      document.getElementById('statusText').innerText = `✅ تم اعتماد الفاتورة ${data.invoiceId}`;
+      clearInvoice();
+      await loadAllData();
+    } catch (err) {
+      document.getElementById('statusText').innerText = "❌ خطأ في الاتصال بالشيت أثناء الحفظ";
+      alert("تعذر الاتصال بالشيت، تأكد من الإنترنت وحاول مرة أخرى.");
+    }
   }
 </script>
 </body>
