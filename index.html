@@ -228,7 +228,7 @@
     <div id="statusText" style="font-size:12px;color:#475569;text-align:center;margin-bottom:6px;font-weight:bold;">جاهز للاستماع...</div>
     
     <div class="voice-fallback-row">
-      <input type="text" id="quickCmdInput" placeholder="أو اضغط هنا وتكلم بمايك الكيبورد: ضيف 2 سيناتور 999..." onkeypress="if(event.key==='Enter') runTextCommand()">
+      <input type="text" id="quickCmdInput" placeholder="أو اكتب/تكلم هنا: ضيف 2 سيناتور 999 لمحمود فني" onkeypress="if(event.key==='Enter') runTextCommand()">
       <button onclick="runTextCommand()">تنفيذ ⚡</button>
     </div>
 
@@ -264,7 +264,6 @@
 
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQ7r2Htn8Ct6LyfxeFgf9GZdLxWm9WEJJhz_mgTPVQ142X4UmzIDN5xntQ5HOHYE47/exec";
-  const GEMINI_API_KEY = "AQ.Ab8RN6IStKhZ3epHREHnsQH5Hc7hlxzbdPUwHlEEWIKOMgRWQw";
 
   let catalog = [];
   let clients = [];
@@ -422,7 +421,7 @@
       document.getElementById('statusText').innerText = "🎤 تكلم الآن... أنا أسمعك";
     };
 
-    recognition.onresult = async (e) => {
+    recognition.onresult = (e) => {
       let interimTranscript = '';
       let finalTranscript = '';
       for (let i = e.resultIndex; i < e.results.length; ++i) {
@@ -436,8 +435,7 @@
         document.getElementById('statusText').innerText = `🗣️ "${interimTranscript}"`;
       }
       if (finalTranscript) {
-        document.getElementById('statusText').innerText = `⏳ جاري تحليل: "${finalTranscript}"`;
-        await parseVoiceCommand(finalTranscript);
+        parseVoiceCommandLocal(finalTranscript);
       }
     };
 
@@ -473,66 +471,145 @@
     }
   }
 
-  async function runTextCommand() {
+  function runTextCommand() {
     const input = document.getElementById('quickCmdInput');
     const text = input.value.trim();
     if (!text) return;
-    document.getElementById('statusText').innerText = `⏳ جاري تحليل: "${text}"`;
     input.value = '';
-    await parseVoiceCommand(text);
+    parseVoiceCommandLocal(text);
   }
 
-  async function parseVoiceCommand(text) {
-    const catalogNames = catalog.map(p => `${p.name} (${p.aliases})`).join(' | ');
-    const prompt = `حلل جملة المبيعات بالعامية المصرية لشركة ماسا جروب وأرجع JSON فقط:
-    الأصناف المتاحة: [${catalogNames}]
-    الجملة: "${text}"
-    JSON: {"action":"add"|"remove"|"clear"|"approve", "clientName":string|null, "tier":"wholesale"|"technician"|"retail"|null, "paid":number|null, "items":[{"matchedName":string, "qty":number}]}`;
+  // محرك تحليل الأوامر الصوتية باللهجة المصرية الفوري (بدون الحاجة لأي API خارجي)
+  function normalizeArabic(str) {
+    return String(str || '')
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/[\u064B-\u065F]/g, '')
+      .toLowerCase()
+      .trim();
+  }
 
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': GEMINI_API_KEY
-        },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  function parseVoiceCommandLocal(rawText) {
+    let text = normalizeArabic(rawText);
+    let actionsDone = [];
+
+    // 1. أوامر عامة
+    if (text.includes('فاتوره جديده') || text.includes('صفر الفاتوره') || text.includes('امسح الكل')) {
+      clearInvoice();
+      document.getElementById('statusText').innerText = `✅ تم فتح فاتورة جديدة ("${rawText}")`;
+      return;
+    }
+    if (text.includes('اعتمد') || text.includes('احفظ الفاتوره') || text.includes('سجل الفاتوره')) {
+      submitInvoice();
+      return;
+    }
+
+    // 2. فئة السعر
+    if (text.includes('جمله')) {
+      document.getElementById('priceTier').value = 'wholesale';
+      recalculateAllPrices();
+      actionsDone.push('سعر جملة');
+    } else if (text.includes('فني')) {
+      document.getElementById('priceTier').value = 'technician';
+      recalculateAllPrices();
+      actionsDone.push('سعر فني');
+    } else if (text.includes('قطاعي')) {
+      document.getElementById('priceTier').value = 'retail';
+      recalculateAllPrices();
+      actionsDone.push('سعر قطاعي');
+    }
+
+    // 3. المبلغ المدفوع
+    if (text.includes('خالص') || text.includes('مدفوع بالكامل') || text.includes('دفع الكل')) {
+      setTimeout(() => setFullPaid(), 50);
+      actionsDone.push('خالص كاش');
+    } else {
+      const paidMatch = text.match(/(?:دفع|مدفوع|سدد|حساب)\s*(\d+)/);
+      if (paidMatch) {
+        document.getElementById('paidAmount').value = Number(paidMatch[1]);
+        updateTotals();
+        actionsDone.push(`مدفوع ${paidMatch[1]}`);
+      }
+    }
+
+    // 4. استخراج اسم العميل (المسجلين مسبقاً أو بعد كلمة لـ / عميل / باسم)
+    let matchedClient = clients.find(c => text.includes(normalizeArabic(c.name)) && c.name.length > 2);
+    if (matchedClient) {
+      document.getElementById('clientName').value = matchedClient.name;
+      checkClientBalance();
+      actionsDone.push(`العميل: ${matchedClient.name}`);
+    } else {
+      const clientRegex = /(?:للعميل|للفني|عميل|باسم|لـ|ل)\s+([\u0600-\u06FF\s]{3,25})/;
+      const cMatch = rawText.match(clientRegex);
+      if (cMatch) {
+        let extractedName = cMatch[1]
+          .replace(/(جملة|فني|قطاعي|خالص|كاش|دفع.*)/g, '')
+          .trim();
+        if (extractedName.length >= 3) {
+          document.getElementById('clientName').value = extractedName;
+          checkClientBalance();
+          actionsDone.push(`العميل: ${extractedName}`);
+        }
+      }
+    }
+
+    // 5. تحويل الأرقام المكتوبة بالحروف لأرقام
+    const wordNums = {
+      'واحد': '1', 'واحده': '1', 'اتنين': '2', 'اثنين': '2', 'تلاته': '3', 'ثلاثه': '3',
+      'اربعه': '4', 'خمسه': '5', 'سته': '6', 'سبعه': '7', 'تمانيه': '8', 'ثمانيه': '8',
+      'تسعه': '9', 'عشره': '10', 'دسته': '12'
+    };
+    let textWithNums = text;
+    Object.keys(wordNums).forEach(w => {
+      textWithNums = textWithNums.replace(new RegExp(`(^|\\s)${w}(\\s|$)`, 'g'), `$1${wordNums[w]}$2`);
+    });
+
+    const isRemove = text.includes('امسح') || text.includes('شيل') || text.includes('احذف') || text.includes('الغي');
+    const tier = document.getElementById('priceTier').value;
+
+    // 6. مطابقة الأصناف من المخزن (الاسم الأساسي + المرادفات)
+    let matchedProducts = [];
+    catalog.forEach(prod => {
+      const candidates = [prod.name, ...(String(prod.aliases || '').split(/[,،|]/))]
+        .map(s => normalizeArabic(s))
+        .filter(s => s.length >= 2);
+
+      // ترتيب المرشحات من الأطول للأقصر لتجنب التداخل
+      candidates.sort((a, b) => b.length - a.length);
+
+      for (let alias of candidates) {
+        const idx = textWithNums.indexOf(alias);
+        if (idx !== -1) {
+          // البحث عن رقم قبل الصنف مباشرة (الكمية)
+          const beforeText = textWithNums.substring(Math.max(0, idx - 12), idx).trim();
+          const qtyMatch = beforeText.match(/(\d+)\s*$/);
+          const qty = qtyMatch ? Number(qtyMatch[1]) : 1;
+          matchedProducts.push({ prod, qty });
+          break;
+        }
+      }
+    });
+
+    if (matchedProducts.length > 0) {
+      matchedProducts.forEach(({ prod, qty }) => {
+        if (isRemove) {
+          invoiceItems = invoiceItems.filter(i => i.name !== prod.name);
+          actionsDone.push(`حذف ${prod.name}`);
+        } else {
+          const ex = invoiceItems.find(i => i.name === prod.name);
+          if (ex) ex.qty += qty;
+          else invoiceItems.push({ name: prod.name, qty: qty, price: prod[tier], prodRef: prod });
+          actionsDone.push(`+${qty} ${prod.name}`);
+        }
       });
-      const result = await res.json();
-      if (result.error) {
-        document.getElementById('statusText').innerText = `❌ خطأ في مفتاح API: ${result.error.message}`;
-        return;
-      }
-      const cmd = JSON.parse(result.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim());
+      renderTable();
+    }
 
-      if (cmd.clientName) { document.getElementById('clientName').value = cmd.clientName; checkClientBalance(); }
-      if (cmd.tier) { document.getElementById('priceTier').value = cmd.tier; recalculateAllPrices(); }
-      if (cmd.paid !== null) document.getElementById('paidAmount').value = cmd.paid;
-      if (cmd.action === 'clear') return clearInvoice();
-      if (cmd.action === 'approve') return submitInvoice();
-
-      if (cmd.items && cmd.items.length > 0) {
-        const tier = document.getElementById('priceTier').value;
-        let addedCount = 0;
-        cmd.items.forEach(item => {
-          const prod = catalog.find(p => p.name === item.matchedName);
-          if (prod) {
-            addedCount++;
-            if (cmd.action === 'remove') invoiceItems = invoiceItems.filter(i => i.name !== prod.name);
-            else {
-              const ex = invoiceItems.find(i => i.name === prod.name);
-              if (ex) ex.qty += item.qty;
-              else invoiceItems.push({ name: prod.name, qty: item.qty, price: prod[tier], prodRef: prod });
-            }
-          }
-        });
-        renderTable();
-        document.getElementById('statusText').innerText = addedCount > 0 ? "✅ تم إضافة الأصناف للفاتورة" : "⚠️ لم يتم العثور على الصنف في المخزن";
-      } else {
-        document.getElementById('statusText').innerText = "✅ تم تحديث بيانات الفاتورة";
-      }
-    } catch (e) {
-      document.getElementById('statusText').innerText = "❌ تعذر التحليل، تأكد من اتصال الإنترنت";
+    if (actionsDone.length > 0) {
+      document.getElementById('statusText').innerText = `✅ تم تنفيذ: ${actionsDone.join(' | ')}`;
+    } else {
+      document.getElementById('statusText').innerText = `⚠️ سمعت: "${rawText}" — لم يطابق اسماً في المخزن`;
     }
   }
 
