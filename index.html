@@ -384,10 +384,10 @@
   <!-- الفوتر السفلي للكاشير -->
   <div class="bottom-bar" id="posBottomBar">
     <div class="bottom-inner">
-      <div id="statusText" style="font-size:12px;color:#475569;text-align:center;margin-bottom:6px;font-weight:bold;">جاهز للاستماع... قل جملتك كاملة براحتك</div>
+      <div id="statusText" style="font-size:12px;color:#475569;text-align:center;margin-bottom:6px;font-weight:bold;">🧠 الذكاء الصوتي جاهز — قل جملتك كاملة براحتك</div>
       
       <div class="voice-fallback-row">
-        <input type="text" id="quickCmdInput" placeholder="أمر صوتي/نصي: 3 سيناتور لحساب 01001234567 / تحصيل 500 من محمود" onkeypress="if(event.key==='Enter') runTextCommand()">
+        <input type="text" id="quickCmdInput" placeholder="أمر صوتي/نصي ذكي: 3 سيناتور 999 لحساب محمود فني خالص..." onkeypress="if(event.key==='Enter') runTextCommand()">
         <button onclick="runTextCommand()">تنفيذ ⚡</button>
       </div>
 
@@ -745,14 +745,20 @@
     return d.toISOString().split('T')[0];
   }
 
-  function addProductToInvoice(prodName, qty) {
+  function addProductToInvoice(prodName, qty, extraService = {}) {
     const prod = catalog.find(p => p.name === prodName);
     if (!prod) return;
     const tier = document.getElementById('priceTier').value;
     if (prod.kind === 'service') {
+      const m = Number(extraService.subMonths) || 12;
+      const labels = { 3: '3 شهور', 6: '6 شهور', 12: 'سنة' };
       invoiceItems.push({
         name: prod.name, qty: qty, price: prod[tier], kind: 'service',
-        username: '', subMonths: 12, durationLabel: 'سنة', endDate: calcEndDateStr(12), prodRef: prod
+        username: extraService.username || '',
+        subMonths: m,
+        durationLabel: labels[m] || (m + ' شهر'),
+        endDate: calcEndDateStr(m),
+        prodRef: prod
       });
     } else {
       const ex = invoiceItems.find(i => i.name === prod.name && i.kind !== 'service');
@@ -1133,13 +1139,12 @@
         else interim += e.results[i][0].transcript;
       }
       if (finalStr) {
-        parseVoiceCommandLocal(finalStr);
+        processSmartVoiceCommand(finalStr);
       } else if (interim) {
         document.getElementById('statusText').innerText = `🗣️ "${interim}"`;
-        // مهلة 1.5 ثانية (1500 ملي ثانية) لتأخذ نفسك وتكمل الجملة براحتك قبل الإغلاق
         instantExecTimer = setTimeout(() => {
           try { recognition.stop(); } catch (err) {}
-          parseVoiceCommandLocal(interim);
+          processSmartVoiceCommand(interim);
         }, 1500);
       }
     };
@@ -1176,7 +1181,89 @@
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    parseVoiceCommandLocal(text);
+    processSmartVoiceCommand(text);
+  }
+
+  // معالجة الصوت بالذكاء الاصطناعي (Gemini) مع الرجوع الآمن للمحرك المحلي عند الحاجة
+  async function processSmartVoiceCommand(rawText) {
+    document.getElementById('statusText').innerText = `🧠 جاري فهم: "${rawText}"...`;
+    try {
+      const compactProducts = catalog.map(p => ({ name: p.name, aliases: p.aliases, kind: p.kind }));
+      const compactClients = clients.map(c => c.name);
+
+      const res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'ai_parse_voice',
+          text: rawText,
+          products: compactProducts,
+          clients: compactClients
+        })
+      });
+      const json = await res.json();
+      if (json.status === 'success' && json.data) {
+        applyAiParsedResult(json.data, rawText);
+        return;
+      }
+    } catch (e) {}
+
+    // شبكة الأمان: لو السيرفر تأخر أو المفتاح غير مفعل يرجع فوراً للمحرك المحلي
+    parseVoiceCommandLocal(rawText);
+  }
+
+  function applyAiParsedResult(ai, rawText) {
+    if (ai.action === 'clear') { clearInvoice(); return; }
+    if (ai.action === 'submit') { submitInvoice(); return; }
+    if (ai.action === 'collect') {
+      openCollectModal(ai.clientName || '', ai.collectAmount || '');
+      document.getElementById('statusText').innerText = `💵 تحصيل نقدي`;
+      return;
+    }
+
+    let summary = [];
+    if (ai.tier && ['retail', 'technician', 'wholesale'].includes(ai.tier)) {
+      document.getElementById('priceTier').value = ai.tier;
+      recalculateAllPrices();
+      const tNames = { retail: 'قطاعي', technician: 'فني', wholesale: 'جملة' };
+      summary.push(tNames[ai.tier]);
+    }
+
+    if (ai.clientName) {
+      document.getElementById('clientName').value = ai.clientName;
+      checkClientBalance();
+      summary.push(`العميل: ${ai.clientName}`);
+    }
+
+    if (Array.isArray(ai.items) && ai.items.length > 0) {
+      ai.items.forEach(it => {
+        const matched = catalog.find(p => p.name === it.name) ||
+                        catalog.find(p => normalizeArabic(p.name) === normalizeArabic(it.name));
+        if (!matched) return;
+        if (it.remove) {
+          invoiceItems = invoiceItems.filter(x => x.name !== matched.name);
+          summary.push(`حذف ${matched.name}`);
+        } else {
+          const qty = Number(it.qty) || 1;
+          addProductToInvoice(matched.name, qty, { username: it.username || '', subMonths: it.subMonths || 12 });
+          summary.push(`${qty} × ${matched.name}`);
+        }
+      });
+    }
+
+    if (ai.paid === -1) {
+      setFullPaid();
+      summary.push('خالص كاش');
+    } else if (ai.paid !== null && ai.paid !== undefined && ai.paid !== '') {
+      document.getElementById('paidAmount').value = Number(ai.paid) || 0;
+      updateTotals();
+      summary.push(`مدفوع: ${ai.paid}`);
+    }
+
+    if (summary.length > 0) {
+      document.getElementById('statusText').innerText = `✨ تم بالذكاء الصوتي: ${summary.join(' | ')}`;
+    } else {
+      parseVoiceCommandLocal(rawText);
+    }
   }
 
   function normalizeArabic(str) {
