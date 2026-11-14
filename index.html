@@ -305,7 +305,7 @@
         </div>
         <div class="form-group full">
           <label>
-            <span>المرادفات الصوتية (تُملأ أوتوماتيك)</span>
+            <span>المرادفات الصوتية (تُملأ أوتوماتيك ويمكنك تعديلها)</span>
             <span class="auto-gen-badge" onclick="autoFillAliases('newProdName', 'newProdAliases')">✨ إعادة توليد</span>
           </label>
           <textarea id="newProdAliases" rows="2" placeholder="ستظهر احتمالات النطق تلقائياً..."></textarea>
@@ -527,8 +527,23 @@
   let pendingPickerQty = 1;
   let recognition;
   let isRecording = false;
+  let instantExecTimer = null;
   let isAdminUnlocked = false;
   let sessionAdminPin = "";
+
+  // القاموس المرجعي المركزي للماركات والمصطلحات (يعمل في الخلفية لتسريع التقاط الصوت)
+  const GLOBAL_BRAND_DICTIONARY = {
+    'senator': 'سيناتور', 'سنتور': 'سيناتور', 'سينتور': 'سيناتور',
+    'hikvision': 'هيك فيجن', 'هيكفيجن': 'هيك فيجن', 'هيك فيجين': 'هيك فيجن', 'هيك': 'هيك فيجن',
+    'uniview': 'يوني فيو', 'يونيفو': 'يوني فيو', 'يوني فيو': 'يوني فيو',
+    'starnet': 'ستار نت', 'ستارنت': 'ستار نت',
+    'nova': 'نوفا', 'رويال': 'رويال', 'royal': 'رويال',
+    'tiger': 'تايجر', 'dahua': 'داهوا', 'داهو': 'داهوا',
+    'ezviz': 'ايزفيز', 'ايزي فيز': 'ايزفيز',
+    'tplink': 'تي بي لينك', 'تي بي لنك': 'تي بي لينك',
+    'iptv': 'اي بي تي في', 'اشتراك': 'اي بي تي في', 'سيرفر': 'اي بي تي في',
+    'dvr': 'دي في ار', 'دي في آر': 'دي في ار'
+  };
 
   window.onload = async () => {
     await loadAllData();
@@ -560,7 +575,6 @@
     }
   }
 
-  // التحقق الصارم من التسعير التصاعدي: التكلفة <= الجملة <= الفني <= القطاعي
   function validatePriceOrder(cost, wholesale, tech, retail) {
     const c = Number(cost) || 0;
     const w = Number(wholesale) || 0;
@@ -838,7 +852,7 @@
           <td style="font-size:12px;">${sub.endDate}</td>
           <td>
             ${statusBadge}
-            <button class="btn-sm" style="background:#dcfce7;color:#166534;margin-top:4px;" onclick="sendSubReminderWhatsApp('${sub.clientName.replace(/'/g, "\\'")}', '${sub.username.replace(/'/g, "\\'")}', '${sub.endDate}')">📲 تذكير</button>
+            <button class="btn-sm" style="background:#dcfce7;color:#166534;margin-top:4px;" onclick="sendSubReminderWhatsApp('${sub.clientName.replace(/'/g, "\\'")}', '${sub.username.replace(/'/g, "\\'")}', '${sub.endDate}')">📲 واتساب بيزنس</button>
           </td>
         </tr>
       `;
@@ -847,11 +861,18 @@
     tbody.innerHTML = rowsHtml || `<tr><td colspan="4" style="color:#64748b;padding:14px;">✅ لا توجد اشتراكات منتهية أو قريبة الانتهاء حالياً</td></tr>`;
   }
 
-  function sendSubReminderWhatsApp(clientName, username, endDate) {
-    const cleanPhone = clientName.replace(/\D/g, '');
+  function openWhatsAppBusiness(phoneRaw, message) {
+    const cleanPhone = String(phoneRaw || '').replace(/\D/g, '');
     const waPhone = (cleanPhone.length >= 10) ? (cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone) : '';
+    const url = waPhone
+      ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(message)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  }
+
+  function sendSubReminderWhatsApp(clientName, username, endDate) {
     const msg = `*ماسا جروب للإلكترونيات* ⚡\nأهلاً بك، نذكركم بقرب انتهاء اشتراك IPTV الخاص بيوزر (*${username}*) بتاريخ *${endDate}*.\nللتجديد تواصل معنا: 01002902102 / 01270919376`;
-    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    openWhatsAppBusiness(clientName, msg);
   }
 
   async function addNewProduct() {
@@ -1004,15 +1025,11 @@
   }
 
   function shareClientStatementWhatsApp(clientName, balance) {
-    const cleanPhone = clientName.replace(/\D/g, '');
-    const waPhone = (cleanPhone.length >= 10) ? (cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone) : '';
     const msg = `*ماسا جروب للإلكترونيات* ⚡\nكشف حساب: *${clientName}*\nالرصيد المستحق: *${balance.toLocaleString()} ج.م*\nللتواصل: 01002902102 / 01270919376`;
-    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    openWhatsAppBusiness(clientName, msg);
   }
 
   function shareInvoiceWhatsApp(inv) {
-    const cleanPhone = String(inv.clientName || '').replace(/\D/g, '');
-    const waPhone = (cleanPhone.length >= 10) ? (cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone) : '';
     const foundClient = clients.find(c => normalizeArabic(c.name) === normalizeArabic(inv.clientName));
     const currentTotalDebt = foundClient ? foundClient.balance : inv.remaining;
     const lines = inv.items.map(it => {
@@ -1020,7 +1037,7 @@
       return `• ${it.name}${subInfo} (${it.qty} × ${it.price}) = ${it.qty * it.price} ج.م`;
     }).join('\n');
     const msg = `*فاتورة - ماسا جروب للإلكترونيات* ⚡\nرقم: *${inv.id}* | العميل: *${inv.clientName}*\n------------------\n${lines}\n------------------\nالإجمالي: *${inv.total.toLocaleString()} ج.م*\nالمدفوع: *${inv.paid.toLocaleString()} ج.م*\nالمتبقي: *${inv.remaining.toLocaleString()} ج.م*\nإجمالي الرصيد المستحق: *${currentTotalDebt.toLocaleString()} ج.م*\n01002902102 / 01270919376`;
-    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    openWhatsAppBusiness(inv.clientName, msg);
   }
 
   function renderOldInvoicesTable() {
@@ -1084,6 +1101,7 @@
     const cb = pendingCallback; closePinModal(); if (cb) cb(pin);
   }
 
+  // إعداد الاستماع فائق السرعة (Zero-Delay)
   function setupSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -1092,21 +1110,30 @@
     recognition.continuous = false;
     recognition.interimResults = true;
 
-    recognition.onstart = () => { document.getElementById('statusText').innerText = "🎤 تكلم الآن... أنا أسمعك"; };
+    recognition.onstart = () => { document.getElementById('statusText').innerText = "🎤 تكلم الآن..."; };
     recognition.onresult = (e) => {
+      clearTimeout(instantExecTimer);
       let interim = '', finalStr = '';
       for (let i = e.resultIndex; i < e.results.length; ++i) {
         if (e.results[i].isFinal) finalStr += e.results[i][0].transcript;
         else interim += e.results[i][0].transcript;
       }
-      if (interim) document.getElementById('statusText').innerText = `🗣️ "${interim}"`;
-      if (finalStr) parseVoiceCommandLocal(finalStr);
+      if (finalStr) {
+        parseVoiceCommandLocal(finalStr);
+      } else if (interim) {
+        document.getElementById('statusText').innerText = `⚡ "${interim}"`;
+        // تنفيذ فوري بمجرد توقف الصوت لمدة 450 ملي ثانية دون انتظار السيرفر
+        instantExecTimer = setTimeout(() => {
+          try { recognition.stop(); } catch (err) {}
+          parseVoiceCommandLocal(interim);
+        }, 450);
+      }
     };
     recognition.onerror = (e) => {
       isRecording = false;
       document.getElementById('micBtn').classList.remove('recording');
       document.getElementById('micBtn').innerText = '🎙️ تحدث لإضافة أصناف';
-      document.getElementById('statusText').innerText = `⚠️ تنبيه صوتي (${e.error})`;
+      if (e.error !== 'aborted') document.getElementById('statusText').innerText = `⚠️ تنبيه صوتي (${e.error})`;
     };
     recognition.onend = () => {
       isRecording = false;
@@ -1117,8 +1144,10 @@
 
   function toggleVoice() {
     if (!recognition) return document.getElementById('quickCmdInput').focus();
-    if (isRecording) recognition.stop();
-    else {
+    if (isRecording) {
+      clearTimeout(instantExecTimer);
+      recognition.stop();
+    } else {
       try {
         isRecording = true;
         document.getElementById('micBtn').classList.add('recording');
@@ -1137,13 +1166,21 @@
   }
 
   function normalizeArabic(str) {
-    return String(str || '')
+    let s = String(str || '')
       .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
       .replace(/[\u064B-\u065F]/g, '')
       .replace(/(?:ثلاث|تلات|تلت)\s*تسعات/g, '999')
       .replace(/(?:ثلاث|تلات|تلت)\s*تمانيات/g, '888')
       .replace(/(?:ثلاث|تلات|تلت)\s*سبعات/g, '777')
+      .replace(/ستين\s*ستين/g, '6060')
       .toLowerCase().trim();
+
+    Object.keys(GLOBAL_BRAND_DICTIONARY).forEach(alias => {
+      if (s.includes(alias)) {
+        s = s.replace(new RegExp(alias, 'g'), GLOBAL_BRAND_DICTIONARY[alias]);
+      }
+    });
+    return s;
   }
 
   function parseVoiceCommandLocal(rawText) {
@@ -1298,7 +1335,7 @@
     if (data.status === 'error') return alert(data.message);
     
     await loadAllData();
-    const sendWa = confirm(`✅ تم حفظ الفاتورة ${data.invoiceId} بنجاح!\n\nهل تريد إرسال الفاتورة على واتساب الآن؟`);
+    const sendWa = confirm(`✅ تم حفظ الفاتورة ${data.invoiceId} بنجاح!\n\nهل تريد إرسال الفاتورة على واتساب بيزنس الآن؟`);
     if (sendWa) {
       shareInvoiceWhatsApp({
         id: data.invoiceId, clientName, total, paid, remaining: total - paid, items: snapshotItems
