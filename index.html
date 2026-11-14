@@ -110,6 +110,7 @@
     .form-group label { font-size: 12px; font-weight: bold; color: #475569; display: flex; justify-content: space-between; align-items: center; }
     .form-group input, .form-group select, .form-group textarea { padding: 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; }
     .auto-gen-badge { background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+    .price-rule-hint { grid-column: span 2; background: #eff6ff; color: #1e40af; padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; text-align: center; }
 
     .bottom-bar {
       position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 2px solid #cbd5e1;
@@ -170,7 +171,7 @@
     </div>
   </div>
 
-  <!-- 1. الكاشير (مفتوح للجميع) -->
+  <!-- 1. الكاشير -->
   <div id="tab-pos" class="tab-content active">
     <div class="pos-layout">
       <div>
@@ -216,9 +217,8 @@
     </div>
   </div>
 
-  <!-- 2. العملاء والاشتراكات (محمي عند الدخول) -->
+  <!-- 2. العملاء والاشتراكات -->
   <div id="tab-clients" class="tab-content">
-    <!-- تنبيهات انتهاء اشتراكات IPTV -->
     <div class="card" style="border-right: 4px solid #9333ea;">
       <div class="card-title" style="color:#6b21a8;">
         <span>🔔 تنبيهات تجديد اشتراكات IPTV (المنتهية أو باقي 3 أيام)</span>
@@ -265,13 +265,29 @@
         <tbody id="clientsTableBody"></tbody>
       </table>
     </div>
+
+    <div class="card" style="padding:0;">
+      <div style="padding:12px;font-weight:bold;">🧾 آخر سندات التحصيل النقدي</div>
+      <table>
+        <thead>
+          <tr>
+            <th>السند</th>
+            <th>العميل / الرقم</th>
+            <th>المبلغ المحصل</th>
+            <th>المتبقي بعد السداد</th>
+          </tr>
+        </thead>
+        <tbody id="paymentsTableBody"></tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- 3. المخزن (محمي عند الدخول — الإضافة بالـ Enter بدون تكرار باسورد) -->
+  <!-- 3. المخزن -->
   <div id="tab-inventory" class="tab-content">
     <div class="card">
-      <div class="card-title">➕ إضافة صنف أو خدمة جديدة (اضغط Enter في آخر خانة للحفظ الفوري)</div>
+      <div class="card-title">➕ إضافة صنف أو خدمة جديدة (Enter للحفظ الفوري)</div>
       <div class="form-grid" onkeypress="if(event.key==='Enter' && event.target.tagName !== 'TEXTAREA') { event.preventDefault(); addNewProduct(); }">
+        <div class="price-rule-hint">📏 قاعدة التسعير التصاعدي: التكلفة ≤ الجملة ≤ الفني ≤ القطاعي</div>
         <div class="form-group">
           <label>نوع الصنف</label>
           <select id="newProdKind" onchange="toggleNewProdStockField()">
@@ -284,8 +300,8 @@
           <input type="number" id="newProdStock" placeholder="0">
         </div>
         <div class="form-group full">
-          <label>اسم الصنف أو الخدمة (مثال: سيناتور 999 أو اشتراك IPTV سنة)</label>
-          <input type="text" id="newProdName" placeholder="اكتب الاسم هنا..." oninput="autoFillAliases('newProdName', 'newProdAliases')">
+          <label>اسم الصنف أو الخدمة</label>
+          <input type="text" id="newProdName" placeholder="مثال: سيناتور 999 أو اشتراك IPTV سنة" oninput="autoFillAliases('newProdName', 'newProdAliases')">
         </div>
         <div class="form-group full">
           <label>
@@ -295,19 +311,19 @@
           <textarea id="newProdAliases" rows="2" placeholder="ستظهر احتمالات النطق تلقائياً..."></textarea>
         </div>
         <div class="form-group">
-          <label>سعر التكلفة</label>
+          <label>1. سعر التكلفة</label>
           <input type="number" id="newProdCost" placeholder="0">
         </div>
         <div class="form-group">
-          <label>سعر الجملة</label>
+          <label>2. سعر الجملة (≥ التكلفة)</label>
           <input type="number" id="newProdWholesale" placeholder="0">
         </div>
         <div class="form-group">
-          <label>سعر الفني</label>
+          <label>3. سعر الفني (≥ الجملة)</label>
           <input type="number" id="newProdTech" placeholder="0">
         </div>
         <div class="form-group">
-          <label>سعر القطاعي (Enter للحفظ)</label>
+          <label>4. سعر القطاعي (≥ الفني)</label>
           <input type="number" id="newProdRetail" placeholder="0">
         </div>
         <div class="form-group full">
@@ -317,7 +333,7 @@
     </div>
 
     <div class="card" style="padding:0;">
-      <div style="padding:12px;font-weight:bold;">📋 قائمة الأصناف والخدمات (التعديل يطلب تأكيد الباسورد)</div>
+      <div style="padding:12px;font-weight:bold;">📋 قائمة الأصناف والخدمات</div>
       <table>
         <thead>
           <tr>
@@ -332,7 +348,7 @@
     </div>
   </div>
 
-  <!-- 4. الفواتير (محمي عند الدخول) -->
+  <!-- 4. الفواتير -->
   <div id="tab-invoices" class="tab-content">
     <div class="card" style="padding:0;">
       <div style="padding:12px;font-weight:bold;">🧾 سجل الفواتير المعتمدة</div>
@@ -350,7 +366,7 @@
     </div>
   </div>
 
-  <!-- 5. التصفير (محمي عند الدخول + تأكيد عند التنفيذ) -->
+  <!-- 5. التصفير -->
   <div id="tab-settings" class="tab-content">
     <div class="card">
       <div class="card-title" style="color:var(--danger);">⚠️ منطقة تصفير البيانات</div>
@@ -371,7 +387,7 @@
       <div id="statusText" style="font-size:12px;color:#475569;text-align:center;margin-bottom:6px;font-weight:bold;">جاهز للاستماع... قل اسم الماركة أو الصنف</div>
       
       <div class="voice-fallback-row">
-        <input type="text" id="quickCmdInput" placeholder="أمر صوتي/نصي: 3 سيناتور لحساب 01001234567" onkeypress="if(event.key==='Enter') runTextCommand()">
+        <input type="text" id="quickCmdInput" placeholder="أمر صوتي/نصي: 3 سيناتور لحساب 01001234567 / تحصيل 500 من محمود" onkeypress="if(event.key==='Enter') runTextCommand()">
         <button onclick="runTextCommand()">تنفيذ ⚡</button>
       </div>
 
@@ -410,6 +426,7 @@
       <h3 style="margin:0 0 12px;color:#0f172a;">📦 تعديل صنف / تزويد كمية</h3>
       <input type="hidden" id="editOrigProdName">
       <div class="form-grid" onkeypress="if(event.key==='Enter' && event.target.tagName !== 'TEXTAREA') { event.preventDefault(); saveProductEdits(); }">
+        <div class="price-rule-hint">📏 التكلفة ≤ الجملة ≤ الفني ≤ القطاعي</div>
         <div class="form-group">
           <label>النوع</label>
           <select id="editProdKind">
@@ -434,19 +451,19 @@
           <input type="number" id="editProdTotalStock">
         </div>
         <div class="form-group">
-          <label>سعر التكلفة</label>
+          <label>1. سعر التكلفة</label>
           <input type="number" id="editProdCost">
         </div>
         <div class="form-group">
-          <label>سعر الجملة</label>
+          <label>2. سعر الجملة</label>
           <input type="number" id="editProdWholesale">
         </div>
         <div class="form-group">
-          <label>سعر الفني</label>
+          <label>3. سعر الفني</label>
           <input type="number" id="editProdTech">
         </div>
         <div class="form-group full">
-          <label>سعر القطاعي</label>
+          <label>4. سعر القطاعي</label>
           <input type="number" id="editProdRetail">
         </div>
       </div>
@@ -480,7 +497,7 @@
     </div>
   </div>
 
-  <!-- نافذة الرقم السري (تدعم Enter مباشرة) -->
+  <!-- نافذة الرقم السري -->
   <div id="pinModal" class="modal-overlay">
     <div class="modal-box" style="max-width:340px;text-align:center;">
       <div style="font-size:32px;margin-bottom:8px;">🔐</div>
@@ -502,6 +519,7 @@
   let catalog = [];
   let clients = [];
   let oldInvoices = [];
+  let paymentsList = [];
   let subscriptionsList = [];
   let invoiceItems = [];
   let editingInvoiceId = null;
@@ -525,11 +543,13 @@
         catalog = data.products || [];
         clients = data.clients || [];
         oldInvoices = data.invoices || [];
+        paymentsList = data.payments || [];
         subscriptionsList = data.subscriptions || [];
         document.getElementById('connBadge').innerText = `✅ متصل (${catalog.length} صنف)`;
         renderInventoryTable();
         renderOldInvoicesTable();
         renderClientsTable('');
+        renderPaymentsTable();
         renderExpiringSubscriptions();
         renderBrandPills();
         renderDesktopCatalog('');
@@ -540,16 +560,21 @@
     }
   }
 
-  // قفل وفتح تبويبات الإدارة
+  // التحقق الصارم من التسعير التصاعدي: التكلفة <= الجملة <= الفني <= القطاعي
+  function validatePriceOrder(cost, wholesale, tech, retail) {
+    const c = Number(cost) || 0;
+    const w = Number(wholesale) || 0;
+    const t = Number(tech) || 0;
+    const r = Number(retail) || 0;
+    if (w < c) return `❌ خطأ في التسعير:\nسعر الجملة (${w}) مينفعش يكون أقل من التكلفة (${c})!`;
+    if (t < w) return `❌ خطأ في التسعير:\nسعر الفني (${t}) مينفعش يكون أقل من الجملة (${w})!`;
+    if (r < t) return `❌ خطأ في التسعير:\nسعر القطاعي (${r}) مينفعش يكون أقل من الفني (${t})!`;
+    return null;
+  }
+
   function requestAdminTab(tabName, btn) {
-    if (tabName === 'pos') {
-      switchTab('pos', btn);
-      return;
-    }
-    if (isAdminUnlocked) {
-      switchTab(tabName, btn);
-      return;
-    }
+    if (tabName === 'pos') { switchTab('pos', btn); return; }
+    if (isAdminUnlocked) { switchTab(tabName, btn); return; }
     requestPin("أدخل الرقم السري لفتح شاشة الإدارة (اضغط Enter)", async (pin) => {
       const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ type: 'verify_pin', pin }) });
       const data = await res.json();
@@ -581,7 +606,6 @@
     document.getElementById('newProdStockWrap').style.visibility = (kind === 'service') ? 'hidden' : 'visible';
   }
 
-  // مولد المرادفات التلقائي
   function generateSmartAliases(productName) {
     const raw = String(productName || '').trim();
     if (!raw) return "";
@@ -789,7 +813,6 @@
     renderDesktopCatalog(document.getElementById('brandSearchInput').value);
   }
 
-  // تنبيهات انتهاء الاشتراكات (المنتهية أو فاضل 3 أيام أو أقل)
   function renderExpiringSubscriptions() {
     const tbody = document.getElementById('expiringSubsBody');
     const today = new Date();
@@ -800,7 +823,7 @@
       const end = new Date(sub.endDate);
       end.setHours(0, 0, 0, 0);
       const diffDays = Math.round((end - today) / (1000 * 60 * 60 * 24));
-      if (diffDays > 3) return ''; // نعرض فقط اللي باقي له 3 أيام أو أقل أو انتهى
+      if (diffDays > 3) return '';
 
       const statusBadge = diffDays < 0
         ? `<span class="alert-badge" style="background:#fee2e2;color:#dc2626;">منتهي منذ ${Math.abs(diffDays)} يوم</span>`
@@ -831,10 +854,17 @@
     window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
-  // المخزن: إضافة بدون باسورد متكرر (طالما شاشة الإدارة مفتوحة)
   async function addNewProduct() {
     const name = document.getElementById('newProdName').value.trim();
     if (!name) return alert("اكتب اسم الصنف أولاً");
+    const cost = document.getElementById('newProdCost').value;
+    const wholesale = document.getElementById('newProdWholesale').value;
+    const tech = document.getElementById('newProdTech').value;
+    const retail = document.getElementById('newProdRetail').value;
+
+    const priceErr = validatePriceOrder(cost, wholesale, tech, retail);
+    if (priceErr) return alert(priceErr);
+
     const kind = document.getElementById('newProdKind').value;
     const aliasesVal = document.getElementById('newProdAliases').value.trim() || generateSmartAliases(name);
     const btn = document.getElementById('saveNewProdBtn');
@@ -843,14 +873,9 @@
     const payload = {
       type: 'add_product',
       pin: sessionAdminPin,
-      kind: kind,
-      name: name,
-      aliases: aliasesVal,
-      cost: document.getElementById('newProdCost').value,
+      kind, name, aliases: aliasesVal, cost,
       stock: document.getElementById('newProdStock').value,
-      wholesale: document.getElementById('newProdWholesale').value,
-      technician: document.getElementById('newProdTech').value,
-      retail: document.getElementById('newProdRetail').value
+      wholesale, technician: tech, retail
     };
     const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
     const data = await res.json();
@@ -890,6 +915,14 @@
 
   function saveProductEdits() {
     const origName = document.getElementById('editOrigProdName').value;
+    const cost = document.getElementById('editProdCost').value;
+    const wholesale = document.getElementById('editProdWholesale').value;
+    const tech = document.getElementById('editProdTech').value;
+    const retail = document.getElementById('editProdRetail').value;
+
+    const priceErr = validatePriceOrder(cost, wholesale, tech, retail);
+    if (priceErr) return alert(priceErr);
+
     const addStockVal = document.getElementById('editProdAddStock').value;
     const totalStockVal = document.getElementById('editProdTotalStock').value;
 
@@ -902,10 +935,7 @@
         aliases: document.getElementById('editProdAliases').value.trim(),
         addStock: Number(addStockVal) || 0,
         overrideStock: addStockVal !== "" ? null : totalStockVal,
-        cost: document.getElementById('editProdCost').value,
-        wholesale: document.getElementById('editProdWholesale').value,
-        technician: document.getElementById('editProdTech').value,
-        retail: document.getElementById('editProdRetail').value
+        cost, wholesale, technician: tech, retail
       };
       const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
       const data = await res.json();
@@ -932,6 +962,17 @@
           <button class="btn-sm" style="background:#dcfce7;color:#166534;" onclick="openCollectModal('${c.name.replace(/'/g, "\\'")}')">💵 تحصيل</button>
           <button class="btn-sm" style="background:#e0f2fe;color:#0369a1;" onclick="shareClientStatementWhatsApp('${c.name.replace(/'/g, "\\'")}', ${c.balance})">📲</button>
         </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderPaymentsTable() {
+    document.getElementById('paymentsTableBody').innerHTML = paymentsList.map(p => `
+      <tr>
+        <td style="font-size:11px;font-weight:bold;">${p.id}</td>
+        <td>${p.clientName}</td>
+        <td style="color:#16a34a;font-weight:bold;">${p.amount.toLocaleString()} ج.م</td>
+        <td style="font-weight:bold;">${p.balanceAfter.toLocaleString()} ج.م</td>
       </tr>
     `).join('');
   }
@@ -972,11 +1013,13 @@
   function shareInvoiceWhatsApp(inv) {
     const cleanPhone = String(inv.clientName || '').replace(/\D/g, '');
     const waPhone = (cleanPhone.length >= 10) ? (cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone) : '';
+    const foundClient = clients.find(c => normalizeArabic(c.name) === normalizeArabic(inv.clientName));
+    const currentTotalDebt = foundClient ? foundClient.balance : inv.remaining;
     const lines = inv.items.map(it => {
       const subInfo = (it.kind === 'service' && it.username) ? ` [يوزر: ${it.username} - ينتهي: ${it.endDate}]` : '';
       return `• ${it.name}${subInfo} (${it.qty} × ${it.price}) = ${it.qty * it.price} ج.م`;
     }).join('\n');
-    const msg = `*فاتورة - ماسا جروب للإلكترونيات* ⚡\nرقم: *${inv.id}* | العميل: *${inv.clientName}*\n------------------\n${lines}\n------------------\nالإجمالي: *${inv.total.toLocaleString()} ج.م*\nالمدفوع: *${inv.paid.toLocaleString()} ج.م*\nالمتبقي: *${inv.remaining.toLocaleString()} ج.م*\n01002902102 / 01270919376`;
+    const msg = `*فاتورة - ماسا جروب للإلكترونيات* ⚡\nرقم: *${inv.id}* | العميل: *${inv.clientName}*\n------------------\n${lines}\n------------------\nالإجمالي: *${inv.total.toLocaleString()} ج.م*\nالمدفوع: *${inv.paid.toLocaleString()} ج.م*\nالمتبقي: *${inv.remaining.toLocaleString()} ج.م*\nإجمالي الرصيد المستحق: *${currentTotalDebt.toLocaleString()} ج.م*\n01002902102 / 01270919376`;
     window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
@@ -1041,7 +1084,6 @@
     const cb = pendingCallback; closePinModal(); if (cb) cb(pin);
   }
 
-  // الصوت
   function setupSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -1106,6 +1148,16 @@
 
   function parseVoiceCommandLocal(rawText) {
     let text = normalizeArabic(rawText);
+
+    if (text.startsWith('تحصيل') || text.startsWith('قبض')) {
+      const amtMatch = text.match(/(\d+)/);
+      const amt = amtMatch ? Number(amtMatch[1]) : '';
+      const fromMatch = rawText.match(/(?:من|عميل)\s+([\u0600-\u06FF0-9\s]{2,25})/);
+      const cName = fromMatch ? fromMatch[1].trim() : '';
+      openCollectModal(cName, amt);
+      return;
+    }
+
     if (text.includes('فاتوره جديده')) { clearInvoice(); return; }
     if (text.includes('اعتمد') || text.includes('احفظ الفاتوره')) { submitInvoice(); return; }
 
