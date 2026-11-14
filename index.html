@@ -384,7 +384,7 @@
   <!-- الفوتر السفلي للكاشير -->
   <div class="bottom-bar" id="posBottomBar">
     <div class="bottom-inner">
-      <div id="statusText" style="font-size:12px;color:#475569;text-align:center;margin-bottom:6px;font-weight:bold;">جاهز للاستماع... قل اسم الماركة أو الصنف</div>
+      <div id="statusText" style="font-size:12px;color:#475569;text-align:center;margin-bottom:6px;font-weight:bold;">جاهز للاستماع... قل جملتك كاملة براحتك</div>
       
       <div class="voice-fallback-row">
         <input type="text" id="quickCmdInput" placeholder="أمر صوتي/نصي: 3 سيناتور لحساب 01001234567 / تحصيل 500 من محمود" onkeypress="if(event.key==='Enter') runTextCommand()">
@@ -1124,7 +1124,7 @@
     recognition.continuous = false;
     recognition.interimResults = true;
 
-    recognition.onstart = () => { document.getElementById('statusText').innerText = "🎤 تكلم الآن..."; };
+    recognition.onstart = () => { document.getElementById('statusText').innerText = "🎤 تكلم الآن... المايك يسمعك"; };
     recognition.onresult = (e) => {
       clearTimeout(instantExecTimer);
       let interim = '', finalStr = '';
@@ -1135,11 +1135,12 @@
       if (finalStr) {
         parseVoiceCommandLocal(finalStr);
       } else if (interim) {
-        document.getElementById('statusText').innerText = `⚡ "${interim}"`;
+        document.getElementById('statusText').innerText = `🗣️ "${interim}"`;
+        // مهلة 1.5 ثانية (1500 ملي ثانية) لتأخذ نفسك وتكمل الجملة براحتك قبل الإغلاق
         instantExecTimer = setTimeout(() => {
           try { recognition.stop(); } catch (err) {}
           parseVoiceCommandLocal(interim);
-        }, 450);
+        }, 1500);
       }
     };
     recognition.onerror = (e) => {
