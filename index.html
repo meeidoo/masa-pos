@@ -264,7 +264,7 @@
 
 <script>
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQ7r2Htn8Ct6LyfxeFgf9GZdLxWm9WEJJhz_mgTPVQ142X4UmzIDN5xntQ5HOHYE47/exec";
-  const GEMINI_API_KEY = "AQ.Ab8RN6KnuZEU2b4nK7lAl_dH5cGftbwyEa5ZguhQvqd72AoD-w";
+  const GEMINI_API_KEY = "AQ.Ab8RN6IStKhZ3epHREHnsQH5Hc7hlxzbdPUwHlEEWIKOMgRWQw";
 
   let catalog = [];
   let clients = [];
@@ -490,8 +490,12 @@
     JSON: {"action":"add"|"remove"|"clear"|"approve", "clientName":string|null, "tier":"wholesale"|"technician"|"retail"|null, "paid":number|null, "items":[{"matchedName":string, "qty":number}]}`;
 
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY
+        },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
       });
       const result = await res.json();
@@ -528,7 +532,7 @@
         document.getElementById('statusText').innerText = "✅ تم تحديث بيانات الفاتورة";
       }
     } catch (e) {
-      document.getElementById('statusText').innerText = "❌ تعذر التحليل، تأكد من صحة مفتاح Gemini API";
+      document.getElementById('statusText').innerText = "❌ تعذر التحليل، تأكد من اتصال الإنترنت";
     }
   }
 
