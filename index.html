@@ -51,22 +51,23 @@
     .pos-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
     .desktop-catalog-panel { display: none; }
     @media (min-width: 900px) {
-      body { padding-top: 106px; padding-bottom: 205px; font-size: 15px; }
-      .brand-bar { padding: 10px 18px; }
-      .brand-title { font-size: 18px; }
-      .conn-badge { font-size: 12.5px; padding: 5px 12px; }
-      .lock-btn { font-size: 12.5px; padding: 6px 12px; }
-      .nav-tabs { padding: 0 12px; gap: 4px; }
-      .nav-tab { padding: 12px 14px; font-size: 14px; min-width: auto; }
-      .tab-badge { font-size: 11px; padding: 2px 7px; }
+      body { padding-top: 96px; padding-bottom: 200px; font-size: 15px; }
+      /* هيدر متناسق بحجم وسط مريح للعين */
+      .brand-bar { padding: 8px 16px; }
+      .brand-title { font-size: 16px; }
+      .conn-badge { font-size: 12px; padding: 4px 10px; }
+      .lock-btn { font-size: 12px; padding: 5px 10px; }
+      .nav-tabs { padding: 0 14px; gap: 6px; }
+      .nav-tab { padding: 10px 13px; font-size: 13px; min-width: auto; }
+      .tab-badge { font-size: 10.5px; padding: 1px 6px; }
       .tab-content { padding: 16px; }
       .pos-layout { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); align-items: start; gap: 16px; }
       .desktop-catalog-panel { display: block; }
-      .card { padding: 16px; }
-      .card-title { font-size: 16px; }
+      .card { padding: 16px 18px; }
+      .card-title { font-size: 16.5px; margin-bottom: 12px; }
       .invoice-top-card { padding: 14px 16px; }
       .top-total-label { font-size: 13.5px; }
-      .header-total { font-size: 26px; }
+      .header-total { font-size: 25px; }
       .client-inputs input { padding: 11px 12px; font-size: 15px; }
       .client-inputs select { padding: 11px 8px; font-size: 14.5px; width: 95px; }
       .add-cli-quick-btn { padding: 0 14px; font-size: 16px; }
@@ -79,14 +80,20 @@
       .inv-item-sub { font-size: 16.5px; }
       .qty-btn { width: 34px; height: 34px; font-size: 19px; }
       .price-edit-input { width: 88px; padding: 6px; font-size: 15px; }
-      .btn-sm { padding: 7px 11px; font-size: 13px; }
       .cat-item-title { font-size: 15px; }
       .cat-item-meta { font-size: 13px; }
-      th { padding: 11px 8px; font-size: 13.5px; }
-      td { padding: 10px 8px; font-size: 13.5px; }
-      .kpi-label { font-size: 13px; }
-      .kpi-val { font-size: 21px; }
-      .filter-pill { padding: 8px 14px; font-size: 13px; }
+
+      /* تكبير وتوضيح خط الجداول والبيانات المهمة والسطور الفرعية على الكمبيوتر */
+      th { padding: 12px 10px; font-size: 14.5px; font-weight: 800; }
+      td { padding: 13px 10px; font-size: 15px !important; line-height: 1.55; }
+      td span, td small { font-size: 13px !important; }
+      td strong { font-size: 15.5px !important; }
+      .alert-badge { font-size: 12px !important; padding: 3px 9px !important; }
+      .btn-sm { padding: 7px 12px; font-size: 13.5px; border-radius: 8px; }
+
+      .kpi-label { font-size: 13.5px; }
+      .kpi-val { font-size: 22px; }
+      .filter-pill { padding: 8px 15px; font-size: 13.5px; }
       .form-group label { font-size: 13.5px; }
       .form-group input, .form-group select, .form-group textarea { padding: 11px; font-size: 15px; }
       .voice-fallback-row input { padding: 10px 12px; font-size: 14.5px; }
