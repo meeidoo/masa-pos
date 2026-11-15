@@ -354,6 +354,11 @@
             <div class="header-total" id="headerTotal">0 ج.م</div>
           </div>
 
+          <div id="parkedTabsContainer" style="display:flex;gap:4px;overflow-x:auto;margin-bottom:6px;scrollbar-width:none;width:100%;">
+            <button class="rem-chip active-mode" style="background:#38bdf8;color:#0f172a;" onclick="switchActiveInvoiceTab(-1)">🟢 الفاتورة الحالية</button>
+            <button class="rem-chip" style="background:rgba(255,255,255,0.2);color:#fff;" onclick="parkCurrentInvoice()">⏸️ تعليق هذه الفاتورة</button>
+            <div id="parkedTabsList" style="display:flex;gap:4px;align-items:center;"></div>
+          </div>
           <div class="client-inputs">
             <input type="text" id="clientName" autocomplete="off"
               placeholder="اسم العميل أو رقم واتساب..."
@@ -617,11 +622,14 @@
           <div style="font-size:11px;color:#94a3b8;">إجمالي المستحق للموردين</div>
           <div id="totalSuppliersDebt" style="font-size:20px;font-weight:900;color:#38bdf8;">0 ج.م</div>
         </div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="openPurchaseModal()" style="background:var(--accent);color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:bold;font-size:11.5px;cursor:pointer;">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button onclick="openPurchaseModal()" style="background:var(--accent);color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             📦 فاتورة شراء
           </button>
-          <button onclick="openUnifiedPayCollectModal('supplier', '', '')" style="background:var(--success);color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:bold;font-size:11.5px;cursor:pointer;">
+          <button onclick="openPurchaseReturnModal()" style="background:#dc2626;color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
+            ↩️ مرتجع لمورد
+          </button>
+          <button onclick="openUnifiedPayCollectModal('supplier', '', '')" style="background:var(--success);color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             💸 سداد لمورد
           </button>
         </div>
@@ -722,7 +730,10 @@
   <!-- 7. الفواتير -->
   <div id="tab-invoices" class="tab-content">
     <div class="card" style="padding:0;">
-      <div style="padding:10px 12px;font-weight:bold;">🧾 سجل الفواتير وأوامر الشحن</div>
+      <div style="padding:10px 12px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+        <span>🧾 سجل الفواتير والمرتجعات وأوامر الشحن</span>
+        <button onclick="openSalesReturnModal()" class="btn-sm" style="background:#fee2e2;color:#dc2626;">↩️ تسجيل مرتجع مبيعات</button>
+      </div>
       <table>
         <thead>
           <tr>
@@ -767,6 +778,7 @@
         <label style="font-size:11.5px;font-weight:bold;">المدفوع:</label>
         <input type="number" id="paidAmount" placeholder="0" oninput="onPaidAmountInput()">
         <button class="btn-sm" onclick="setFullPaid()" style="background:#e2e8f0;">خالص كاش</button>
+        <button class="btn-sm" onclick="openSalesReturnModal()" style="background:#fef3c7;color:#b45309;">↩️ مرتجع</button>
         <button class="btn-sm" onclick="clearInvoice()" style="background:#fee2e2;color:var(--danger);">جديدة</button>
       </div>
       <div class="actions-row">
@@ -837,8 +849,12 @@
       <div id="purCartList" style="max-height:130px;overflow-y:auto;margin-bottom:8px;"></div>
 
       <div style="background:#0f172a;color:#fff;padding:9px 10px;border-radius:10px;margin-bottom:9px;">
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:bold;margin-bottom:7px;">
-          <span>الإجمالي: <span id="purCartTotalText" style="color:#4ade80;">0 ج.م</span></span>
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:bold;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
+          <span>إجمالي الفاتورة: <span id="purCartTotalText" style="color:#4ade80;">0 ج.م</span></span>
+          <span id="purCreditDeductLine" style="color:#38bdf8;display:none;">خصم رصيدك السابق: <strong id="purCreditDeductVal">0 ج.م</strong></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:bold;margin-bottom:7px;border-top:1px solid #334155;padding-top:4px;">
+          <span>الصافي المطلوب: <span id="purNetPayableText" style="color:#fff;">0 ج.م</span></span>
           <span>المتبقي: <span id="purCartRemText" style="color:#fbbf24;">0 ج.م</span></span>
         </div>
 
@@ -1200,6 +1216,114 @@
     </div>
   </div>
 
+  <!-- 5. نافذة مرتجع مشتريات لمورد -->
+  <div id="purchaseReturnModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:490px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;color:#dc2626;font-size:15px;">↩️ مرتجع مشتريات (رد بضاعة لمورد)</h3>
+        <button onclick="document.getElementById('purchaseReturnModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+
+      <div class="form-group" style="position:relative;margin-bottom:8px;">
+        <label>اسم المورد أو رقمه</label>
+        <input type="text" id="pretSupplierName" autocomplete="off" placeholder="اضغط أو اكتب اسم المورد..."
+          onfocus="showPretSupplierDropdown()" oninput="this.value = cleanEgyptianPhone(this.value); showPretSupplierDropdown(); checkPretSupplierBal();">
+        <div id="pretSupplierDropdown" class="client-dropdown" style="top:52px;"></div>
+        <div id="pretSupplierBalStrip" style="font-size:11px;font-weight:bold;color:#0369a1;margin-top:2px;">الرصيد السابق للمورد: 0 ج.م</div>
+      </div>
+
+      <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:11px;padding:9px;margin-bottom:8px;">
+        <div class="form-group" style="position:relative;margin-bottom:8px;">
+          <label>اختر الصنف المردود للمورد</label>
+          <input type="text" id="pretProdInput" autocomplete="off" placeholder="ابحث باسم الصنف..."
+            onfocus="showPretProdDropdown()" oninput="showPretProdDropdown()">
+          <div id="pretProdDropdown" class="client-dropdown" style="top:52px;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:5px;align-items:end;">
+          <div class="form-group">
+            <label>الكمية المردودة</label>
+            <input type="number" id="pretQty" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>سعر المرتجع</label>
+            <input type="number" id="pretUnitCost" placeholder="0">
+          </div>
+          <button onclick="addItemToPretCart()" style="background:#dc2626;color:#fff;border:none;padding:9px 11px;border-radius:9px;font-weight:bold;cursor:pointer;">➕ إضافة</button>
+        </div>
+      </div>
+
+      <div id="pretCartList" style="max-height:130px;overflow-y:auto;margin-bottom:8px;"></div>
+
+      <div style="background:#0f172a;color:#fff;padding:9px 10px;border-radius:10px;margin-bottom:9px;">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:bold;margin-bottom:7px;">
+          <span>إجمالي المرتجع: <span id="pretTotalText" style="color:#fca5a5;">0 ج.م</span></span>
+          <span>يُخصم من حساب المورد: <span id="pretNetDeductText" style="color:#4ade80;">0 ج.م</span></span>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center;margin-bottom:6px;">
+          <label style="font-size:11.5px;">المستلم كاش من المورد (إن وجد):</label>
+          <input type="number" id="pretCashBack" value="0" oninput="recalcPretTotals()" style="width:95px;padding:5px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+        </div>
+        <input type="text" id="pretNote" placeholder="سبب المرتجع / ملاحظات..." style="width:100%;padding:6px;border-radius:6px;border:none;font-size:11.5px;">
+      </div>
+
+      <button onclick="submitPurchaseReturn()" style="width:100%;background:#dc2626;color:#fff;border:none;padding:11px;border-radius:10px;font-weight:bold;font-size:13.5px;cursor:pointer;">✅ اعتماد مرتجع المشتريات وتحديث المخزن والحساب</button>
+    </div>
+  </div>
+
+  <!-- 6. نافذة مرتجع مبيعات من عميل -->
+  <div id="salesReturnModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:490px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;color:#b45309;font-size:15px;">↩️ مرتجع مبيعات (استرجاع بضاعة من عميل)</h3>
+        <button onclick="document.getElementById('salesReturnModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+
+      <div class="form-group" style="position:relative;margin-bottom:8px;">
+        <label>اسم العميل أو رقمه</label>
+        <input type="text" id="sretClientName" autocomplete="off" placeholder="اضغط أو اكتب اسم العميل..."
+          onfocus="showSretClientDropdown()" oninput="this.value = cleanEgyptianPhone(this.value); showSretClientDropdown(); checkSretClientBal();">
+        <div id="sretClientDropdown" class="client-dropdown" style="top:52px;"></div>
+        <div id="sretClientBalStrip" style="font-size:11px;font-weight:bold;color:#0369a1;margin-top:2px;">الرصيد السابق للعميل: 0 ج.م</div>
+      </div>
+
+      <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:11px;padding:9px;margin-bottom:8px;">
+        <div class="form-group" style="position:relative;margin-bottom:8px;">
+          <label>اختر الصنف المرتجع من العميل</label>
+          <input type="text" id="sretProdInput" autocomplete="off" placeholder="ابحث باسم الصنف..."
+            onfocus="showSretProdDropdown()" oninput="showSretProdDropdown()">
+          <div id="sretProdDropdown" class="client-dropdown" style="top:52px;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:5px;align-items:end;">
+          <div class="form-group">
+            <label>الكمية</label>
+            <input type="number" id="sretQty" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>سعر الارتجاع</label>
+            <input type="number" id="sretUnitPrice" placeholder="0">
+          </div>
+          <button onclick="addItemToSretCart()" style="background:#d97706;color:#fff;border:none;padding:9px 11px;border-radius:9px;font-weight:bold;cursor:pointer;">➕ إضافة</button>
+        </div>
+      </div>
+
+      <div id="sretCartList" style="max-height:130px;overflow-y:auto;margin-bottom:8px;"></div>
+
+      <div style="background:#0f172a;color:#fff;padding:9px 10px;border-radius:10px;margin-bottom:9px;">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:bold;margin-bottom:7px;">
+          <span>إجمالي المرتجع: <span id="sretTotalText" style="color:#fbbf24;">0 ج.م</span></span>
+          <span>يُخصم من حساب العميل: <span id="sretNetCreditText" style="color:#4ade80;">0 ج.م</span></span>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center;margin-bottom:6px;">
+          <label style="font-size:11.5px;">المردود كاش للعميل (إن وجد):</label>
+          <input type="number" id="sretCashRefunded" value="0" oninput="recalcSretTotals()" style="width:95px;padding:5px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+        </div>
+        <input type="text" id="sretNote" placeholder="سبب المرتجع / ملاحظات..." style="width:100%;padding:6px;border-radius:6px;border:none;font-size:11.5px;">
+      </div>
+
+      <button onclick="submitSalesReturn()" style="width:100%;background:#d97706;color:#fff;border:none;padding:11px;border-radius:10px;font-weight:bold;font-size:13.5px;cursor:pointer;">✅ اعتماد مرتجع المبيعات وتزويد المخزن</button>
+    </div>
+  </div>
+
   <div id="pinModal" class="modal-overlay">
     <div class="modal-box" style="max-width:330px;text-align:center;">
       <div style="font-size:30px;margin-bottom:6px;">🔐</div>
@@ -1307,6 +1431,7 @@
   window.onload = async () => {
     if (isAdminUnlocked) document.getElementById('lockAdminBtn').style.display = 'inline-block';
     restoreDraftState();
+    loadParkedInvoices();
     const savedTab = localStorage.getItem('masa_active_tab') || 'pos';
     const tabBtn = document.querySelector(`.nav-tab[data-tab="${savedTab}"]`);
     if (savedTab !== 'pos' && isAdminUnlocked && tabBtn) switchTab(savedTab, tabBtn);
@@ -1321,6 +1446,18 @@
       }
       if (!e.target.closest('#uniTargetInput') && !e.target.closest('#uniTargetDropdown')) {
         const dd3 = document.getElementById('uniTargetDropdown'); if (dd3) dd3.style.display = 'none';
+      }
+      if (!e.target.closest('#pretSupplierName') && !e.target.closest('#pretSupplierDropdown')) {
+        const dd4 = document.getElementById('pretSupplierDropdown'); if (dd4) dd4.style.display = 'none';
+      }
+      if (!e.target.closest('#pretProdInput') && !e.target.closest('#pretProdDropdown')) {
+        const dd5 = document.getElementById('pretProdDropdown'); if (dd5) dd5.style.display = 'none';
+      }
+      if (!e.target.closest('#sretClientName') && !e.target.closest('#sretClientDropdown')) {
+        const dd6 = document.getElementById('sretClientDropdown'); if (dd6) dd6.style.display = 'none';
+      }
+      if (!e.target.closest('#sretProdInput') && !e.target.closest('#sretProdDropdown')) {
+        const dd7 = document.getElementById('sretProdDropdown'); if (dd7) dd7.style.display = 'none';
       }
     });
     await loadAllData();
@@ -1338,6 +1475,84 @@
       items: invoiceItems.map(i => ({ ...i, prodRef: null }))
     };
     localStorage.setItem('masa_pos_draft', JSON.stringify(draft));
+  }
+
+
+  let parkedInvoicesList = [];
+
+  function loadParkedInvoices() {
+    try {
+      const raw = localStorage.getItem('masa_parked_tabs');
+      parkedInvoicesList = raw ? JSON.parse(raw) : [];
+    } catch (e) { parkedInvoicesList = []; }
+    renderParkedTabsUI();
+  }
+
+  function saveParkedInvoices() {
+    localStorage.setItem('masa_parked_tabs', JSON.stringify(parkedInvoicesList));
+    renderParkedTabsUI();
+  }
+
+  function renderParkedTabsUI() {
+    const listEl = document.getElementById('parkedTabsList');
+    if (!listEl) return;
+    listEl.innerHTML = parkedInvoicesList.map((p, idx) => `
+      <button class="rem-chip" style="background:#334155;color:#38bdf8;display:flex;align-items:center;gap:4px;" onclick="restoreParkedInvoice(${idx})" title="استرجاع فاتورة ${p.clientName}">
+        <span>⏸️ ${p.clientName || 'بدون اسم'} (${p.items.length})</span>
+        <span onclick="event.stopPropagation(); removeParkedInvoice(${idx})" style="color:#fca5a5;font-weight:900;padding:0 3px;">✕</span>
+      </button>
+    `).join('');
+  }
+
+  function parkCurrentInvoice() {
+    if (invoiceItems.length === 0) return alert("الفاتورة الحالية فارغة لتعليقها!");
+    const cliName = document.getElementById('clientName').value.trim() || 'عميل نقدي';
+    parkedInvoicesList.push({
+      clientName: cliName,
+      priceTier: document.getElementById('priceTier').value,
+      paidAmount: document.getElementById('paidAmount').value,
+      reminderDate: document.getElementById('invoiceReminderDate').value,
+      orderMode: currentOrderMode,
+      shippingNote: document.getElementById('shippingNoteInput').value,
+      items: [...invoiceItems]
+    });
+    saveParkedInvoices();
+    clearInvoice();
+    showToast(`⏸️ تم تعليق فاتورة (${cliName}) بنجاح`);
+  }
+
+  function restoreParkedInvoice(idx) {
+    if (invoiceItems.length > 0) {
+      if (!confirm("لديك أصناف في الفاتورة الحالية، هل تريد تعليقها واسترجاع الفاتورة الأخرى؟")) return;
+      parkCurrentInvoice();
+    }
+    const p = parkedInvoicesList.splice(idx, 1)[0];
+    saveParkedInvoices();
+    if (!p) return;
+    document.getElementById('clientName').value = p.clientName || '';
+    document.getElementById('priceTier').value = p.priceTier || 'retail';
+    handleTierChange();
+    document.getElementById('paidAmount').value = p.paidAmount || '';
+    document.getElementById('invoiceReminderDate').value = p.reminderDate || '';
+    document.getElementById('shippingNoteInput').value = p.shippingNote || '';
+    setOrderMode(p.orderMode || 'instant', true);
+    invoiceItems = p.items || [];
+    renderInvoiceItems(true);
+    showToast(`✅ تم استرجاع فاتورة (${p.clientName})`);
+  }
+
+  function removeParkedInvoice(idx) {
+    if (!confirm("هل تريد حذف هذه الفاتورة المعلقة نهائياً؟")) return;
+    parkedInvoicesList.splice(idx, 1);
+    saveParkedInvoices();
+    showToast("🗑️ تم حذف الفاتورة المعلقة");
+  }
+
+  function switchActiveInvoiceTab(idx) {
+    if (idx === -1) {
+      // Current active invoice
+      return;
+    }
   }
 
   function restoreDraftState() {
@@ -1785,13 +2000,26 @@
     checkSupplierPrevBalance();
   }
 
+  function getSelectedPurSupplierPrevBal() {
+    const name = cleanEgyptianPhone(document.getElementById('purSupplierName').value.trim());
+    const found = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(name));
+    return found ? (Number(found.balance) || 0) : 0;
+  }
+
   function checkSupplierPrevBalance() {
     const name = cleanEgyptianPhone(document.getElementById('purSupplierName').value.trim());
     const found = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(name));
-    const bal = found ? found.balance : 0;
-    document.getElementById('purSupplierBalStrip').innerText = found
-      ? `🔗 مورد مسجل | الرصيد السابق للمورد: ${bal.toLocaleString()} ج.م`
-      : (name ? '🆕 مورد جديد | الرصيد السابق: 0 ج.م' : 'الرصيد السابق للمورد: 0 ج.م');
+    const bal = found ? (Number(found.balance) || 0) : 0;
+    if (found) {
+      if (bal < 0) {
+        document.getElementById('purSupplierBalStrip').innerHTML = `🔗 مورد مسجل | الرصيد السابق: <strong style="color:#16a34a;">${bal.toLocaleString()} ج.م</strong> (سيتم خصم ${Math.abs(bal).toLocaleString()} ج.م تلقائياً من الفاتورة)`;
+      } else {
+        document.getElementById('purSupplierBalStrip').innerText = `🔗 مورد مسجل | الرصيد السابق: ${bal.toLocaleString()} ج.م`;
+      }
+    } else {
+      document.getElementById('purSupplierBalStrip').innerText = name ? '🆕 مورد جديد | الرصيد السابق: 0 ج.م' : 'الرصيد السابق للمورد: 0 ج.م';
+    }
+    recalcPurchaseTotals();
   }
 
   function showPurProdDropdown() {
@@ -1915,18 +2143,35 @@
 
   function recalcPurchaseTotals() {
     const total = purchaseCart.reduce((s, it) => s + (it.qty * it.unitCost), 0);
-    if (purchasePayMode === 'instant') document.getElementById('purPaid').value = total;
+    const prevBal = getSelectedPurSupplierPrevBal();
+    const creditAvail = prevBal < 0 ? Math.abs(prevBal) : 0;
+    const creditUsed = Math.min(total, creditAvail);
+    const netPayable = Math.max(0, total - creditUsed);
+
+    const creditLine = document.getElementById('purCreditDeductLine');
+    if (creditUsed > 0) {
+      creditLine.style.display = 'inline';
+      document.getElementById('purCreditDeductVal').innerText = `${creditUsed.toLocaleString()} ج.م`;
+    } else {
+      creditLine.style.display = 'none';
+    }
+
+    if (purchasePayMode === 'instant') document.getElementById('purPaid').value = netPayable;
     const paid = Number(document.getElementById('purPaid').value) || 0;
-    const rem = Math.max(0, total - paid);
+    const rem = Math.max(0, netPayable - paid);
     document.getElementById('purCartTotalText').innerText = `${total.toLocaleString()} ج.م`;
+    document.getElementById('purNetPayableText').innerText = `${netPayable.toLocaleString()} ج.م`;
     document.getElementById('purCartRemText').innerText = `${rem.toLocaleString()} ج.م`;
     if (purchasePayMode === 'deferred') generatePurchaseInstallments();
   }
 
   function generatePurchaseInstallments() {
     const total = purchaseCart.reduce((s, it) => s + (it.qty * it.unitCost), 0);
+    const prevBal = getSelectedPurSupplierPrevBal();
+    const creditUsed = prevBal < 0 ? Math.min(total, Math.abs(prevBal)) : 0;
+    const netPayable = Math.max(0, total - creditUsed);
     const paid = Number(document.getElementById('purPaid').value) || 0;
-    const rem = Math.max(0, total - paid);
+    const rem = Math.max(0, netPayable - paid);
     const count = Math.max(1, Math.min(12, Number(document.getElementById('purInstCount').value) || 3));
     const container = document.getElementById('purInstRows');
     if (rem <= 0) {
@@ -2017,6 +2262,245 @@
     });
   }
 
+
+  let pretCart = [], sretCart = [];
+
+  function openPurchaseReturnModal() {
+    ensureAdminUnlockedThenRun("أدخل الرقم السري لفتح نافذة مرتجع المشتريات", () => {
+      pretCart = [];
+      document.getElementById('pretSupplierName').value = '';
+      document.getElementById('pretSupplierBalStrip').innerText = 'الرصيد السابق للمورد: 0 ج.م';
+      document.getElementById('pretProdInput').value = '';
+      document.getElementById('pretQty').value = '';
+      document.getElementById('pretUnitCost').value = '';
+      document.getElementById('pretCashBack').value = '0';
+      document.getElementById('pretNote').value = '';
+      renderPretCart();
+      document.getElementById('purchaseReturnModal').style.display = 'flex';
+    });
+  }
+
+  function showPretSupplierDropdown() {
+    const dd = document.getElementById('pretSupplierDropdown');
+    const q = normalizeArabic(document.getElementById('pretSupplierName').value);
+    const matches = suppliersList.filter(s => !q || normalizeArabic(s.name).includes(q)).slice(0, 12);
+    dd.innerHTML = matches.map(s => `
+      <div class="client-dd-item" onclick="document.getElementById('pretSupplierName').value='${s.name.replace(/'/g, "\\'")}';document.getElementById('pretSupplierDropdown').style.display='none';checkPretSupplierBal();">
+        <span style="font-weight:800;">🏭 ${s.name}</span>
+        <span style="font-weight:900;color:${s.balance > 0 ? '#dc2626' : '#16a34a'};">${s.balance.toLocaleString()} ج.م</span>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function checkPretSupplierBal() {
+    const name = cleanEgyptianPhone(document.getElementById('pretSupplierName').value.trim());
+    const found = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(name));
+    document.getElementById('pretSupplierBalStrip').innerText = found
+      ? `🔗 الرصيد السابق للمورد: ${found.balance.toLocaleString()} ج.م`
+      : 'الرصيد السابق للمورد: 0 ج.م';
+  }
+
+  function showPretProdDropdown() {
+    const dd = document.getElementById('pretProdDropdown');
+    const q = normalizeArabic(document.getElementById('pretProdInput').value);
+    const matches = getSortedCatalogByUsage().filter(p => !q || normalizeArabic(p.name).includes(q) || normalizeArabic(p.aliases).includes(q)).slice(0, 12);
+    dd.innerHTML = matches.map(p => `
+      <div class="client-dd-item" onclick="document.getElementById('pretProdInput').value='${p.name.replace(/'/g, "\\'")}';document.getElementById('pretUnitCost').value=${p.cost};document.getElementById('pretProdDropdown').style.display='none';">
+        <span>${p.kind === 'service' ? '🌐 ' : '📦 '}${p.name}</span>
+        <span style="font-size:10.5px;color:#475569;">متاح: ${p.stock} | تكلفة: ${p.cost}</span>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function addItemToPretCart() {
+    const name = document.getElementById('pretProdInput').value.trim();
+    const qty = Number(document.getElementById('pretQty').value) || 0;
+    const unitCost = Number(document.getElementById('pretUnitCost').value) || 0;
+    if (!name || qty <= 0 || unitCost <= 0) return alert("اختر الصنف والكمية وسعر المرتجع");
+    const prod = catalog.find(p => normalizeArabic(p.name) === normalizeArabic(name));
+    pretCart.push({ name: prod ? prod.name : name, kind: prod ? prod.kind : 'stock', qty, unitCost });
+    document.getElementById('pretProdInput').value = '';
+    document.getElementById('pretQty').value = '';
+    document.getElementById('pretUnitCost').value = '';
+    renderPretCart();
+  }
+
+  function renderPretCart() {
+    const el = document.getElementById('pretCartList');
+    el.innerHTML = pretCart.map((it, idx) => `
+      <div class="pur-cart-item">
+        <div><strong>${it.name}</strong><div style="font-size:10.5px;color:#475569;">${it.qty} × ${it.unitCost} = ${(it.qty * it.unitCost).toLocaleString()} ج.م</div></div>
+        <button onclick="pretCart.splice(${idx},1);renderPretCart();" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+    `).join('') || `<div style="text-align:center;color:#94a3b8;font-size:11.5px;padding:6px;">أضف الأصناف المردودة للمورد</div>`;
+    recalcPretTotals();
+  }
+
+  function recalcPretTotals() {
+    const total = pretCart.reduce((s, it) => s + (it.qty * it.unitCost), 0);
+    const cashBack = Number(document.getElementById('pretCashBack').value) || 0;
+    const netDeduct = total - cashBack;
+    document.getElementById('pretTotalText').innerText = `${total.toLocaleString()} ج.م`;
+    document.getElementById('pretNetDeductText').innerText = `${netDeduct.toLocaleString()} ج.م`;
+  }
+
+  function submitPurchaseReturn() {
+    const supplier = cleanEgyptianPhone(document.getElementById('pretSupplierName').value.trim());
+    if (!supplier || pretCart.length === 0) return alert("اكتب اسم المورد وأضف صنفاً واحداً على الأقل");
+    const total = pretCart.reduce((s, it) => s + (it.qty * it.unitCost), 0);
+    const cashBack = Number(document.getElementById('pretCashBack').value) || 0;
+    const netDeduct = total - cashBack;
+    const note = document.getElementById('pretNote').value.trim();
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+    pretCart.forEach(it => {
+      if (it.kind !== 'service') {
+        const p = catalog.find(x => x.name === it.name);
+        if (p) p.stock -= Number(it.qty);
+      }
+    });
+    const sup = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(supplier));
+    if (sup) { sup.balance -= netDeduct; sup.lastUpdate = nowStr; }
+    else suppliersList.push({ name: supplier, balance: -netDeduct, lastUpdate: nowStr, notes: '' });
+
+    supplierLogsList.unshift({
+      id: 'PRET-NEW', date: nowStr, supplier, kind: 'مرتجع مشتريات',
+      total: -total, paid: -cashBack, remaining: -netDeduct,
+      details: pretCart.map(x => `${x.qty} × ${x.name}`).join(' + ') + (note ? ` (${note})` : ''),
+      items: [...pretCart]
+    });
+
+    const snapshot = [...pretCart];
+    document.getElementById('purchaseReturnModal').style.display = 'none';
+    renderAllViews();
+    showToast("✅ تم اعتماد مرتجع المشتريات وخصمه من حساب المورد والمخزن!");
+    enqueueServerSync({ type: 'save_purchase_return', pin: sessionAdminPin, supplier, cashBack, note, items: snapshot });
+  }
+
+  function openSalesReturnModal() {
+    ensureAdminUnlockedThenRun("أدخل الرقم السري لفتح نافذة مرتجع المبيعات", () => {
+      sretCart = [];
+      const curClient = cleanEgyptianPhone(document.getElementById('clientName').value.trim());
+      document.getElementById('sretClientName').value = curClient;
+      document.getElementById('sretProdInput').value = '';
+      document.getElementById('sretQty').value = '';
+      document.getElementById('sretUnitPrice').value = '';
+      document.getElementById('sretCashRefunded').value = '0';
+      document.getElementById('sretNote').value = '';
+      checkSretClientBal();
+      renderSretCart();
+      document.getElementById('salesReturnModal').style.display = 'flex';
+    });
+  }
+
+  function showSretClientDropdown() {
+    const dd = document.getElementById('sretClientDropdown');
+    const q = normalizeArabic(document.getElementById('sretClientName').value);
+    const matches = clients.filter(c => !q || normalizeArabic(c.name).includes(q)).slice(0, 12);
+    dd.innerHTML = matches.map(c => `
+      <div class="client-dd-item" onclick="document.getElementById('sretClientName').value='${c.name.replace(/'/g, "\\'")}';document.getElementById('sretClientDropdown').style.display='none';checkSretClientBal();">
+        <span style="font-weight:800;">👤 ${c.name}</span>
+        <span style="font-weight:900;color:${c.balance > 0 ? '#dc2626' : '#16a34a'};">${c.balance.toLocaleString()} ج.م</span>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function checkSretClientBal() {
+    const name = cleanEgyptianPhone(document.getElementById('sretClientName').value.trim());
+    const found = findClientInMemory(name);
+    document.getElementById('sretClientBalStrip').innerText = found
+      ? `🔗 الرصيد السابق للعميل: ${found.balance.toLocaleString()} ج.م (${found.tier})`
+      : 'الرصيد السابق للعميل: 0 ج.م';
+  }
+
+  function showSretProdDropdown() {
+    const dd = document.getElementById('sretProdDropdown');
+    const q = normalizeArabic(document.getElementById('sretProdInput').value);
+    const cli = findClientInMemory(document.getElementById('sretClientName').value.trim());
+    const tierKey = cli ? (cli.tier === 'فني' ? 'technician' : (cli.tier === 'جملة' ? 'wholesale' : 'retail')) : document.getElementById('priceTier').value;
+    const matches = getSortedCatalogByUsage().filter(p => !q || normalizeArabic(p.name).includes(q) || normalizeArabic(p.aliases).includes(q)).slice(0, 12);
+    dd.innerHTML = matches.map(p => `
+      <div class="client-dd-item" onclick="document.getElementById('sretProdInput').value='${p.name.replace(/'/g, "\\'")}';document.getElementById('sretUnitPrice').value=${p[tierKey]};document.getElementById('sretProdDropdown').style.display='none';">
+        <span>${p.kind === 'service' ? '🌐 ' : '📦 '}${p.name}</span>
+        <span style="font-size:10.5px;color:#16a34a;font-weight:bold;">${p[tierKey]} ج.م</span>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function addItemToSretCart() {
+    const name = document.getElementById('sretProdInput').value.trim();
+    const qty = Number(document.getElementById('sretQty').value) || 0;
+    const price = Number(document.getElementById('sretUnitPrice').value) || 0;
+    if (!name || qty <= 0 || price <= 0) return alert("اختر الصنف والكمية وسعر الارتجاع");
+    const prod = catalog.find(p => normalizeArabic(p.name) === normalizeArabic(name));
+    sretCart.push({ name: prod ? prod.name : name, kind: prod ? prod.kind : 'stock', qty, price });
+    document.getElementById('sretProdInput').value = '';
+    document.getElementById('sretQty').value = '';
+    document.getElementById('sretUnitPrice').value = '';
+    renderSretCart();
+  }
+
+  function renderSretCart() {
+    const el = document.getElementById('sretCartList');
+    el.innerHTML = sretCart.map((it, idx) => `
+      <div class="pur-cart-item">
+        <div><strong>${it.name}</strong><div style="font-size:10.5px;color:#475569;">${it.qty} × ${it.price} = ${(it.qty * it.price).toLocaleString()} ج.م</div></div>
+        <button onclick="sretCart.splice(${idx},1);renderSretCart();" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+    `).join('') || `<div style="text-align:center;color:#94a3b8;font-size:11.5px;padding:6px;">أضف الأصناف المرتجعة من العميل</div>`;
+    recalcSretTotals();
+  }
+
+  function recalcSretTotals() {
+    const total = sretCart.reduce((s, it) => s + (it.qty * it.price), 0);
+    const cashRef = Number(document.getElementById('sretCashRefunded').value) || 0;
+    const netCredit = total - cashRef;
+    document.getElementById('sretTotalText').innerText = `${total.toLocaleString()} ج.م`;
+    document.getElementById('sretNetCreditText').innerText = `${netCredit.toLocaleString()} ج.م`;
+  }
+
+  function submitSalesReturn() {
+    if (sretCart.length === 0) return alert("أضف صنفاً واحداً على الأقل للمرتجع");
+    const clientName = cleanEgyptianPhone(document.getElementById('sretClientName').value.trim()) || "عميل نقدي";
+    const total = sretCart.reduce((s, it) => s + (it.qty * it.price), 0);
+    const cashRefunded = Number(document.getElementById('sretCashRefunded').value) || 0;
+    const netCredit = total - cashRefunded;
+    const note = document.getElementById('sretNote').value.trim();
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+    let totalCostRet = 0;
+    sretCart.forEach(it => {
+      const p = catalog.find(x => x.name === it.name);
+      if (p) {
+        if (it.kind !== 'service') p.stock += Number(it.qty);
+        totalCostRet += (p.cost || 0) * Number(it.qty);
+      }
+    });
+
+    const cli = findClientInMemory(clientName);
+    const tierLabel = cli ? cli.tier : 'قطاعي';
+    if (clientName !== 'عميل نقدي' && netCredit !== 0) {
+      if (cli) { cli.balance -= netCredit; cli.lastUpdate = nowStr; if (cli.balance <= 0) cli.reminderDate = ''; }
+      else clients.unshift({ name: clientName, tier: tierLabel, balance: -netCredit, behavior: 'متقطع', reminderDate: '', lastUpdate: nowStr, notes: '', invoiceCount: 1 });
+    }
+
+    const snapshot = [...sretCart];
+    oldInvoices.unshift({
+      id: 'SRET-NEW', date: nowStr, clientName, tier: tierLabel,
+      total: -total, paid: -cashRefunded, remaining: -netCredit,
+      items: snapshot, totalCost: -totalCostRet, reminderDate: '', orderType: 'sales_return', shippingNote: note
+    });
+
+    document.getElementById('salesReturnModal').style.display = 'none';
+    renderAllViews();
+    showToast("✅ تم اعتماد مرتجع المبيعات وتزويد المخزن وتعديل الحساب!");
+    enqueueServerSync({ type: 'save_sales_return', pin: sessionAdminPin, clientName, tier: tierLabel, cashRefunded, note, items: snapshot });
+  }
+
   function dismissTopAlertStrip() {
     topAlertDismissed = true;
     document.getElementById('topAlertsStrip').style.display = 'none';
@@ -2040,6 +2524,16 @@
         source: 'deferred', id: inv.id, date: dt,
         target: inv.clientName, title: `📦 أمر شحن / بيع مؤجل (${inv.shippingNote || inv.items.map(x => x.name).join(' + ')})`,
         amount: inv.total, isDue: !dt || dt <= todayStr
+      });
+    });
+
+    // أي فاتورة بيع فوري ومتبقي عليها فلوس، تظهر فوراً في التنبيهات المستحقة
+    oldInvoices.filter(inv => inv.orderType === 'instant' && inv.remaining > 0 && inv.clientName !== 'عميل نقدي').forEach(inv => {
+      const invDay = inv.date.split(' ')[0];
+      items.push({
+        source: 'instant_debt', id: inv.id, date: invDay,
+        target: inv.clientName, title: `⚡ فاتورة فوري بمتبقي (${inv.items.map(x => x.name).join(' + ')})`,
+        amount: inv.remaining, isDue: true
       });
     });
 
@@ -2161,6 +2655,8 @@
       renderAllViews();
       showToast(`✅ تم تحويل الأمر ${id} إلى فاتورة بيع معتمدة!`);
       enqueueServerSync({ type: 'complete_deferred', pin: sessionAdminPin, invoiceId: id, paidAmount: Number(paidVal) });
+    } else if (source === 'instant_debt') {
+      openUnifiedPayCollectModal('client', target, amount, { id, source: 'client_rem', amount });
     } else if (source === 'client_rem') {
       openUnifiedPayCollectModal('client', id, amount, { id, source, amount });
     } else if (source === 'custom') {
@@ -2409,12 +2905,16 @@
   function renderOldInvoicesTable() {
     document.getElementById('oldInvoicesBody').innerHTML = oldInvoices.map((inv, idx) => {
       const isDef = inv.orderType === 'deferred';
+      const isRet = inv.orderType === 'sales_return';
+      const badgeBg = isRet ? '#fee2e2' : (isDef ? '#fef3c7' : '#dcfce7');
+      const badgeColor = isRet ? '#dc2626' : (isDef ? '#b45309' : '#166534');
+      const badgeLabel = isRet ? '↩️ مرتجع' : (isDef ? '📦 مؤجل' : '⚡ فوري');
       return `
-        <tr style="background:${isDef ? '#fffbeb' : '#fff'};">
+        <tr style="background:${isRet ? '#fef2f2' : (isDef ? '#fffbeb' : '#fff')};">
           <td style="font-weight:bold;font-size:10px;">
             ${inv.id}<br>
             <span style="color:#64748b;font-weight:normal;">📅 ${inv.date || '-'}</span><br>
-            <span class="alert-badge" style="background:${isDef ? '#fef3c7' : '#dcfce7'};color:${isDef ? '#b45309' : '#166534'};">${isDef ? '📦 مؤجل' : '⚡ فوري'}</span>
+            <span class="alert-badge" style="background:${badgeBg};color:${badgeColor};">${badgeLabel}</span>
           </td>
           <td style="font-weight:bold;font-size:10.5px;">${inv.clientName}</td>
           <td><strong>${inv.total}</strong><br><span style="font-size:9.5px;color:${inv.remaining > 0 ? '#dc2626' : '#16a34a'};">متبقي: ${inv.remaining}</span></td>
@@ -2913,10 +3413,11 @@
     if (!inv) return;
     if (!skipConfirm && !confirm(`هل تريد حذف الفاتورة ${id} وإرجاع أصنافها للمخزن وتعديل رصيد العميل؟`)) return;
 
+    const stockSign = (inv.orderType === 'sales_return') ? -1 : +1;
     (inv.items || []).forEach(it => {
       if (it.kind !== 'service') {
         const p = catalog.find(x => x.name === it.name);
-        if (p) p.stock += Number(it.qty);
+        if (p) p.stock += (stockSign * Number(it.qty));
       }
     });
     if (inv.clientName !== 'عميل نقدي' && inv.orderType !== 'deferred' && inv.remaining !== 0) {
@@ -3189,6 +3690,7 @@
 
       oldInvoices.filter(inv => normalizeArabic(inv.clientName) === normTarget).forEach(inv => {
         const isDef = inv.orderType === 'deferred';
+        const isRet = inv.orderType === 'sales_return';
         if (!isDef) {
           totalGoods += Number(inv.total) || 0;
           totalPaid += Number(inv.paid) || 0;
@@ -3197,10 +3699,10 @@
         ledger.push({
           date: inv.date || '-',
           ref: inv.id,
-          desc: `${isDef ? '📦 أمر مؤجل' : '🧾 فاتورة بضاعة'}: ${itemsText}`,
+          desc: `${isRet ? '↩️ مرتجع مبيعات' : (isDef ? '📦 أمر مؤجل' : '🧾 فاتورة بضاعة')}: ${itemsText}`,
           goodsAmt: Number(inv.total) || 0,
           paidAmt: Number(inv.paid) || 0,
-          note: isDef ? (inv.shippingNote || 'أمر مؤجل لم يُعتمد بعد') : `متبقي الفاتورة: ${(Number(inv.remaining) || 0).toLocaleString()} ج.م`
+          note: isRet ? (inv.shippingNote || 'خصم مرتجع من الحساب') : (isDef ? (inv.shippingNote || 'أمر مؤجل لم يُعتمد بعد') : `متبقي الفاتورة: ${(Number(inv.remaining) || 0).toLocaleString()} ج.م`)
         });
       });
 
@@ -3224,7 +3726,8 @@
 
       supplierLogsList.filter(l => normalizeArabic(l.supplier) === normTarget).forEach(l => {
         const isPur = l.kind === 'شراء بضاعة';
-        if (isPur) {
+        const isPret = l.kind === 'مرتجع مشتريات';
+        if (isPur || isPret) {
           totalGoods += Number(l.total) || 0;
           totalPaid += Number(l.paid) || 0;
         } else {
@@ -3236,10 +3739,10 @@
         ledger.push({
           date: l.date || '-',
           ref: l.id,
-          desc: `${isPur ? '📦 فاتورة شراء بضاعة' : '💸 سداد دفعة للمورد'}: ${itemsText}`,
-          goodsAmt: isPur ? (Number(l.total) || 0) : 0,
+          desc: `${isPret ? '↩️ مرتجع مشتريات للمورد' : (isPur ? '📦 فاتورة شراء بضاعة' : '💸 سداد دفعة للمورد')}: ${itemsText}`,
+          goodsAmt: (isPur || isPret) ? (Number(l.total) || 0) : 0,
           paidAmt: Number(l.paid) || 0,
-          note: isPur ? `متبقي الفاتورة: ${(Number(l.remaining) || 0).toLocaleString()} ج.م` : (l.details || 'سداد نقدي')
+          note: (isPur || isPret) ? `صافي الأثر: ${(Number(l.remaining) || 0).toLocaleString()} ج.م` : (l.details || 'سداد نقدي')
         });
       });
     }
@@ -3255,8 +3758,8 @@
       <tr>
         <td style="font-weight:bold;">${row.ref}<br><span>📅 ${row.date}</span></td>
         <td style="text-align:right;font-weight:bold;">${row.desc}</td>
-        <td style="font-weight:bold;color:#1e40af;">${row.goodsAmt > 0 ? row.goodsAmt.toLocaleString() + ' ج.م' : '-'}</td>
-        <td style="font-weight:bold;color:#16a34a;">${row.paidAmt > 0 ? row.paidAmt.toLocaleString() + ' ج.م' : '-'}</td>
+        <td style="font-weight:bold;color:${row.goodsAmt < 0 ? '#dc2626' : '#1e40af'};">${row.goodsAmt !== 0 ? row.goodsAmt.toLocaleString() + ' ج.م' : '-'}</td>
+        <td style="font-weight:bold;color:${row.paidAmt < 0 ? '#dc2626' : '#16a34a'};">${row.paidAmt !== 0 ? row.paidAmt.toLocaleString() + ' ج.م' : '-'}</td>
         <td><span>${row.note}</span></td>
       </tr>
     `).join('') || `<tr><td colspan="5" style="padding:14px;color:#64748b;">لا توجد حركات مسجلة لهذا الحساب بعد</td></tr>`;
