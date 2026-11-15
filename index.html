@@ -828,7 +828,7 @@
               <option value="service">🌐 خدمة اشتراكات IPTV</option>
             </select>
           </div>
-          <div style="font-size:10.5px;color:#1d4ed8;margin-top:4px;">⚡ سيتم حساب أسعار البيع تلقائياً (+50 جملة / +100 فني / +200 قطاعي)</div>
+          <div style="font-size:10.5px;color:#1d4ed8;margin-top:4px;">⚡ سيتم حساب أسعار البيع تلقائياً (جملة +5% | فني +10% | قطاعي +20%)</div>
         </div>
 
 
@@ -1585,7 +1585,7 @@
 
   async function loadAllData(silent = false) {
     try {
-      const res = await fetch(`${SCRIPT_URL}?action=init`);
+      const res = await fetch(`${SCRIPT_URL}?action=init&pin=${sessionAdminPin}`);
       const data = await res.json();
       if (data.status === 'success') {
         catalog = data.products || [];
@@ -2066,7 +2066,7 @@
     document.getElementById('purUnitCost').value = '';
     document.getElementById('purPaid').value = '0';
     document.getElementById('purNewProdOptions').style.display = 'none';
-    { const _w = document.getElementById('purExistingUpdateWrap'); if (_w) _w.style.display = 'none'; }
+    document.getElementById('purExistingUpdateWrap').style.display = 'none';
     setPurchasePayMode('instant');
     renderPurchaseCart();
     document.getElementById('purchaseModal').style.display = 'flex';
@@ -2151,18 +2151,18 @@
       badge.style.background = '#dcfce7'; badge.style.color = '#166534';
       badge.innerText = `🔗 مسجل (متاح: ${found.stock})`;
       document.getElementById('purNewProdOptions').style.display = 'none';
-      { const _w = document.getElementById('purExistingUpdateWrap'); if (_w) _w.style.display = found.kind !== 'service' ? 'block' : 'none'; }
+      document.getElementById('purExistingUpdateWrap').style.display = found.kind !== 'service' ? 'block' : 'none';
       if (!document.getElementById('purUnitCost').value) document.getElementById('purUnitCost').value = found.cost;
     } else if (rawVal) {
       badge.style.background = '#dbeafe'; badge.style.color = '#1d4ed8';
       badge.innerText = '🆕 صنف جديد';
       document.getElementById('purNewProdOptions').style.display = 'block';
-      { const _w = document.getElementById('purExistingUpdateWrap'); if (_w) _w.style.display = 'none'; }
+      document.getElementById('purExistingUpdateWrap').style.display = 'none';
     } else {
       badge.style.background = '#e2e8f0'; badge.style.color = '#334155';
       badge.innerText = 'بحث / جديد';
       document.getElementById('purNewProdOptions').style.display = 'none';
-      { const _w = document.getElementById('purExistingUpdateWrap'); if (_w) _w.style.display = 'none'; }
+      document.getElementById('purExistingUpdateWrap').style.display = 'none';
     }
   }
 
@@ -3171,9 +3171,9 @@
   function autoCalculateTierPrices(prefix) {
     const cost = Number(document.getElementById(prefix + 'Cost').value) || 0;
     if (cost <= 0) return;
-    document.getElementById(prefix + 'Wholesale').value = cost + 50;
-    document.getElementById(prefix + 'Tech').value = cost + 100;
-    document.getElementById(prefix + 'Retail').value = cost + 200;
+    document.getElementById(prefix + 'Wholesale').value = Math.round(cost * 1.05 * 100) / 100;
+    document.getElementById(prefix + 'Tech').value = Math.round(cost * 1.10 * 100) / 100;
+    document.getElementById(prefix + 'Retail').value = Math.round(cost * 1.20 * 100) / 100;
   }
 
   function validatePriceOrder(cost, wholesale, tech, retail) {
