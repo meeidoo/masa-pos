@@ -203,7 +203,7 @@
     .cat-item-meta { font-size: 11.5px; color: #475569; display: flex; justify-content: space-between; }
 
     .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
-    @media (min-width: 768px) { .kpi-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (min-width: 768px) { .kpi-grid { grid-template-columns: repeat(5, 1fr); } }
     .kpi-box { background: #fff; border-radius: 12px; padding: 10px; border-right: 4px solid var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
     .kpi-label { font-size: 10.5px; color: #64748b; font-weight: bold; }
     .kpi-val { font-size: 16px; font-weight: 900; color: #0f172a; margin-top: 3px; }
@@ -702,8 +702,13 @@
         <div class="kpi-val" id="repCostTotal">0 ج.م</div>
       </div>
       <div class="kpi-box" style="border-right-color:#16a34a;">
-        <div class="kpi-label">صافي المكسب</div>
+        <div class="kpi-label">مجمل الربح</div>
         <div class="kpi-val" id="repNetProfit" style="color:#16a34a;">0 ج.م</div>
+      </div>
+
+      <div class="kpi-box" style="border-right-color:#9333ea;">
+        <div class="kpi-label">قيمة البضاعة (رأس المال)</div>
+        <div class="kpi-val" id="repStockValue" style="color:#9333ea;">0 ج.م</div>
       </div>
       <div class="kpi-box" style="border-right-color:#dc2626;">
         <div class="kpi-label">ديون السوق</div>
@@ -826,12 +831,7 @@
           <div style="font-size:10.5px;color:#1d4ed8;margin-top:4px;">⚡ سيتم حساب أسعار البيع تلقائياً (+50 جملة / +100 فني / +200 قطاعي)</div>
         </div>
 
-        <div id="purExistingUpdateWrap" style="display:none;margin-bottom:7px;font-size:10.5px;">
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:#1e40af;font-weight:bold;">
-            <input type="checkbox" id="purUpdateSellPricesChk" checked style="width:auto;">
-            تحديث أسعار البيع بالمخزن تلقائياً (+50 / +100 / +200)
-          </label>
-        </div>
+
 
         <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:5px;align-items:end;">
           <div class="form-group">
@@ -1462,6 +1462,16 @@
     });
     await loadAllData();
     setupSpeech();
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'F2') { e.preventDefault(); const mic = document.getElementById('micBtn'); if(mic) mic.click(); }
+    if (e.key === 'F4') { e.preventDefault(); const btn = document.getElementById('submitInvoiceBtn'); if(btn && !btn.disabled) btn.click(); }
+    if (e.key === 'F9') { e.preventDefault(); const p = document.getElementById('paidAmount'); if(p) { p.focus(); p.select(); } }
+    if (e.key === 'Escape') { 
+      document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); 
+      dismissTopAlertStrip();
+    }
+  });
+
   };
 
   function saveDraftState() {
@@ -1925,6 +1935,46 @@
     }
   }
 
+  
+  function applySupplierPaymentToInvoices(supplierName, payAmount) {
+    let remainingPay = payAmount;
+    const supInvoices = supplierLogsList.filter(l => normalizeArabic(l.supplier) === normalizeArabic(supplierName) && l.kind === 'شراء بضاعة' && l.remaining > 0).sort((a,b) => a.date.localeCompare(b.date));
+    for (let inv of supInvoices) {
+      if (remainingPay <= 0) break;
+      const applyToThis = Math.min(remainingPay, inv.remaining);
+      inv.paid = (Number(inv.paid) || 0) + applyToThis;
+      inv.remaining = Math.max(0, (Number(inv.total) || 0) - inv.paid);
+      remainingPay -= applyToThis;
+      enqueueServerSync({ type: 'pay_purchase_balance', pin: sessionAdminPin, logId: inv.id, amount: applyToThis }, false);
+    }
+  }
+
+  function reverseClientPaymentFromInvoices(clientName, refundAmount) {
+    let remainingRefund = refundAmount;
+    const clientInvoices = oldInvoices.filter(inv => normalizeArabic(inv.clientName) === normalizeArabic(clientName) && inv.orderType === 'instant' && inv.paid > 0).sort((a,b) => b.date.localeCompare(a.date));
+    for (let inv of clientInvoices) {
+      if (remainingRefund <= 0) break;
+      const reversible = Math.min(remainingRefund, inv.paid);
+      inv.paid -= reversible;
+      inv.remaining += reversible;
+      remainingRefund -= reversible;
+      enqueueServerSync({ type: 'pay_invoice_balance', pin: sessionAdminPin, invoiceId: inv.id, amount: -reversible }, false);
+    }
+  }
+
+  function reverseSupplierPaymentFromInvoices(supplierName, refundAmount) {
+    let remainingRefund = refundAmount;
+    const supInvoices = supplierLogsList.filter(l => normalizeArabic(l.supplier) === normalizeArabic(supplierName) && l.kind === 'شراء بضاعة' && l.paid > 0).sort((a,b) => b.date.localeCompare(a.date));
+    for (let inv of supInvoices) {
+      if (remainingRefund <= 0) break;
+      const reversible = Math.min(remainingRefund, inv.paid);
+      inv.paid -= reversible;
+      inv.remaining += reversible;
+      remainingRefund -= reversible;
+      enqueueServerSync({ type: 'pay_purchase_balance', pin: sessionAdminPin, logId: inv.id, amount: -reversible }, false);
+    }
+  }
+
   function submitUnifiedPayCollect() {
     const editId = document.getElementById('editPaymentId').value;
     const targetName = cleanEgyptianPhone(document.getElementById('uniTargetInput').value.trim());
@@ -1971,6 +2021,7 @@
       const sup = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(targetName));
       if (sup) { sup.balance -= amount; sup.lastUpdate = nowStr; }
       supplierLogsList.unshift({ id: 'SPAY-NEW', date: nowStr, supplier: targetName, kind: 'سداد دفعة', total: 0, paid: amount, remaining: -amount, details: note || 'سداد' });
+      applySupplierPaymentToInvoices(targetName, amount);
       if (remAlertDate && rem > 0) {
         customAlertsList.unshift({ id: 'ALT-NEW', date: remAlertDate, target: targetName, title: `سداد باقي مستحقات المورد (${targetName})`, amount: rem, kind: 'سداد مورد', status: 'نشط' });
       }
@@ -2129,7 +2180,7 @@
       technician: unitCost + 100,
       retail: unitCost + 200,
       aliases: existing ? existing.aliases : generateSmartAliases(name),
-      updateSellPrices: existing ? document.getElementById('purUpdateSellPricesChk').checked : true
+      updateSellPrices: true
     });
 
     document.getElementById('purProdInput').value = '';
@@ -2427,7 +2478,7 @@
   function showSretClientDropdown() {
     const dd = document.getElementById('sretClientDropdown');
     const q = normalizeArabic(document.getElementById('sretClientName').value);
-    const matches = clients.filter(c => !q || normalizeArabic(c.name).includes(q)).slice(0, 12);
+    const matches = clients.filter(c => !q || normalizeArabic(c.name).includes(q)).sort((a, b) => (b.invoiceCount || 0) - (a.invoiceCount || 0)).slice(0, 15);
     dd.innerHTML = matches.map(c => `
       <div class="client-dd-item" onclick="document.getElementById('sretClientName').value='${c.name.replace(/'/g, "\\'")}';document.getElementById('sretClientDropdown').style.display='none';checkSretClientBal();">
         <span style="font-weight:800;">👤 ${c.name}</span>
@@ -3060,7 +3111,7 @@
   function showClientDropdown() {
     const dd = document.getElementById('clientDropdown');
     const q = normalizeArabic(document.getElementById('clientName').value);
-    const matches = clients.filter(c => !q || normalizeArabic(c.name).includes(q)).slice(0, 12);
+    const matches = clients.filter(c => !q || normalizeArabic(c.name).includes(q)).sort((a, b) => (b.invoiceCount || 0) - (a.invoiceCount || 0)).slice(0, 15);
 
     let html = matches.map(c => `
       <div class="client-dd-item" onclick="selectClientFromDropdown('${c.name.replace(/'/g, "\\'")}')">
@@ -3307,6 +3358,7 @@
     if (!p || !confirm(`حذف سند التحصيل ${id} وإرجاع المبلغ (${p.amount} ج.م) لرصيد العميل؟`)) return;
     const cli = findClientInMemory(p.clientName);
     if (cli) cli.balance += p.amount;
+    reverseClientPaymentFromInvoices(p.clientName, p.amount);
     paymentsList = paymentsList.filter(x => x.id !== id);
     renderAllViews();
     showToast(`🗑️ تم حذف السند ${id}`);
@@ -3412,6 +3464,10 @@
 
   function deleteSupLogById(id) {
     if (!confirm(`هل تريد حذف حركة المورد ${id} وعكس أثرها؟`)) return;
+    const l = supplierLogsList.find(x => x.id === id);
+    if (l && l.kind === 'سداد دفعة') {
+      reverseSupplierPaymentFromInvoices(l.supplier, l.paid);
+    }
     supplierLogsList = supplierLogsList.filter(x => x.id !== id);
     renderAllViews();
     showToast("🗑️ تم حذف الحركة");
@@ -3454,6 +3510,7 @@
       if (cli) { cli.balance -= inv.remaining; if (cli.balance <= 0) cli.reminderDate = ''; }
     }
     oldInvoices = oldInvoices.filter(x => x.id !== id);
+    customAlertsList = customAlertsList.filter(a => !a.title.includes(id));
     renderAllViews();
     showToast(`🗑️ تم حذف الفاتورة ${id} وإعادة ضبط المخزن`);
     enqueueServerSync({ type: 'delete_invoice', pin: sessionAdminPin, invoiceId: id });
@@ -3875,6 +3932,15 @@
     document.getElementById('repCostTotal').innerText = `${costTotal.toLocaleString()} ج.م`;
     document.getElementById('repNetProfit').innerText = `${(salesTotal - costTotal).toLocaleString()} ج.م`;
     document.getElementById('repMarketDebt').innerText = `${marketDebt.toLocaleString()} ج.م`;
+    let stockValue = 0;
+    catalog.forEach(p => {
+      if (p.kind !== 'service' && p.stock > 0 && p.cost > 0) {
+        stockValue += (p.stock * p.cost);
+      }
+    });
+    const stEl = document.getElementById('repStockValue');
+    if (stEl) stEl.innerText = `${stockValue.toLocaleString()} ج.م`;
+
 
     const sortedProds = Object.entries(prodStats).sort((a, b) => b[1].revenue - a[1].revenue);
     document.getElementById('topProductsBody').innerHTML = sortedProds.map(([name, st]) => `
@@ -3905,7 +3971,7 @@
       ["الفترة من", document.getElementById('repFromDate').value, "إلى", document.getElementById('repToDate').value],
       ["إجمالي المبيعات", document.getElementById('repSalesTotal').innerText],
       ["التكلفة الفعلية", document.getElementById('repCostTotal').innerText],
-      ["صافي المكسب", document.getElementById('repNetProfit').innerText],
+      ["مجمل الربح", document.getElementById('repNetProfit').innerText],
       ["إجمالي ديون السوق", document.getElementById('repMarketDebt').innerText]
     ];
     downloadCSV("Masa_Profit_Report.csv", rows);
