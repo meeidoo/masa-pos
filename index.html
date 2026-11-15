@@ -2066,7 +2066,7 @@
     document.getElementById('purUnitCost').value = '';
     document.getElementById('purPaid').value = '0';
     document.getElementById('purNewProdOptions').style.display = 'none';
-    (document.getElementById('purExistingUpdateWrap') || {}).style ? const el_peuw = document.getElementById('purExistingUpdateWrap'); if(el_peuw) el_peuw.style.display = 'none';
+    { const _w = document.getElementById('purExistingUpdateWrap'); if (_w) _w.style.display = 'none'; }
     setPurchasePayMode('instant');
     renderPurchaseCart();
     document.getElementById('purchaseModal').style.display = 'flex';
@@ -2151,18 +2151,18 @@
       badge.style.background = '#dcfce7'; badge.style.color = '#166534';
       badge.innerText = `🔗 مسجل (متاح: ${found.stock})`;
       document.getElementById('purNewProdOptions').style.display = 'none';
-      (document.getElementById('purExistingUpdateWrap') || {}).style ? const el_peuw = document.getElementById('purExistingUpdateWrap'); if(el_peuw) el_peuw.style.display = found.kind !== 'service' ? 'block' : 'none';
+      { const _w = document.getElementById('purExistingUpdateWrap'); if (_w) _w.style.display = found.kind !== 'service' ? 'block' : 'none'; }
       if (!document.getElementById('purUnitCost').value) document.getElementById('purUnitCost').value = found.cost;
     } else if (rawVal) {
       badge.style.background = '#dbeafe'; badge.style.color = '#1d4ed8';
       badge.innerText = '🆕 صنف جديد';
       document.getElementById('purNewProdOptions').style.display = 'block';
-      (document.getElementById('purExistingUpdateWrap') || {}).style ? const el_peuw = document.getElementById('purExistingUpdateWrap'); if(el_peuw) el_peuw.style.display = 'none';
+      { const _w = document.getElementById('purExistingUpdateWrap'); if (_w) _w.style.display = 'none'; }
     } else {
       badge.style.background = '#e2e8f0'; badge.style.color = '#334155';
       badge.innerText = 'بحث / جديد';
       document.getElementById('purNewProdOptions').style.display = 'none';
-      (document.getElementById('purExistingUpdateWrap') || {}).style ? const el_peuw = document.getElementById('purExistingUpdateWrap'); if(el_peuw) el_peuw.style.display = 'none';
+      { const _w = document.getElementById('purExistingUpdateWrap'); if (_w) _w.style.display = 'none'; }
     }
   }
 
