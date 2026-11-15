@@ -1937,7 +1937,19 @@
         else if (remAlertDate) cli.reminderDate = remAlertDate;
       }
       paymentsList.unshift({ id: 'REC-NEW', date: nowStr, clientName: targetName, amount, balanceAfter: cli ? cli.balance : -amount, note });
-      enqueueServerSync({ type: 'collect_payment', pin: sessionAdminPin, clientName: targetName, amount, note, nextReminder: remAlertDate });
+      
+      const linkId = document.getElementById('linkedAlertId').value;
+      const linkSrc = document.getElementById('linkedAlertSource').value;
+      if (linkSrc === 'instant_debt' && linkId) {
+        const inv = oldInvoices.find(x => x.id === linkId);
+        if (inv) {
+          inv.paid = (Number(inv.paid) || 0) + amount;
+          inv.remaining = Math.max(0, (Number(inv.total) || 0) - inv.paid);
+        }
+        enqueueServerSync({ type: 'pay_invoice_balance', pin: sessionAdminPin, invoiceId: linkId, amount });
+      } else {
+        enqueueServerSync({ type: 'collect_payment', pin: sessionAdminPin, clientName: targetName, amount, note, nextReminder: remAlertDate });
+      }
     } else {
       const sup = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(targetName));
       if (sup) { sup.balance -= amount; sup.lastUpdate = nowStr; }
@@ -2656,7 +2668,7 @@
       showToast(`✅ تم تحويل الأمر ${id} إلى فاتورة بيع معتمدة!`);
       enqueueServerSync({ type: 'complete_deferred', pin: sessionAdminPin, invoiceId: id, paidAmount: Number(paidVal) });
     } else if (source === 'instant_debt') {
-      openUnifiedPayCollectModal('client', target, amount, { id, source: 'client_rem', amount });
+      openUnifiedPayCollectModal('client', target, amount, { id, source: 'instant_debt', amount });
     } else if (source === 'client_rem') {
       openUnifiedPayCollectModal('client', id, amount, { id, source, amount });
     } else if (source === 'custom') {
