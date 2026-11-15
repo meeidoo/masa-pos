@@ -1910,7 +1910,7 @@
 
   function applyClientPaymentToInvoices(clientName, payAmount) {
     let remainingPay = payAmount;
-    const clientInvoices = oldInvoices.filter(inv => normalizeArabic(inv.clientName) === normalizeArabic(clientName) && inv.orderType === 'instant' && inv.remaining > 0);
+    const clientInvoices = oldInvoices.filter(inv => normalizeArabic(inv.clientName) === normalizeArabic(clientName) && inv.orderType === 'instant' && inv.remaining > 0).sort((a,b) => a.date.localeCompare(b.date));
     for (let inv of clientInvoices) {
       if (remainingPay <= 0) break;
       const applyToThis = Math.min(remainingPay, inv.remaining);
@@ -1924,7 +1924,7 @@
 
   function applyClientPaymentToInvoices(clientName, payAmount) {
     let remainingPay = payAmount;
-    const clientInvoices = oldInvoices.filter(inv => normalizeArabic(inv.clientName) === normalizeArabic(clientName) && inv.orderType === 'instant' && inv.remaining > 0);
+    const clientInvoices = oldInvoices.filter(inv => normalizeArabic(inv.clientName) === normalizeArabic(clientName) && inv.orderType === 'instant' && inv.remaining > 0).sort((a,b) => a.date.localeCompare(b.date));
     for (let inv of clientInvoices) {
       if (remainingPay <= 0) break;
       const applyToThis = Math.min(remainingPay, inv.remaining);
@@ -2043,7 +2043,18 @@
     }
 
     renderAllViews();
-    showToast(`✅ تم تسجيل ${unifiedPayType === 'client' ? 'تحصيل' : 'سداد'} ${amount.toLocaleString()} ج.م بنجاح!`);
+    const successMsg = `✅ تم تسجيل ${unifiedPayType === 'client' ? 'تحصيل' : 'سداد'} ${amount.toLocaleString()} ج.م بنجاح!`;
+    showToast(successMsg);
+    
+    if (unifiedPayType === 'client') {
+      setTimeout(() => {
+        if (confirm(`${successMsg}\n\nهل تريد إرسال إيصال السداد للعميل على واتساب بيزنس؟`)) {
+          const cliAfter = findClientInMemory(targetName);
+          const balAfter = cliAfter ? cliAfter.balance : 0;
+          shareReceiptWhatsApp(targetName, amount, balAfter, 'REC-NEW', nowStr);
+        }
+      }, 300);
+    }
   }
 
   function openPurchaseModal() {
@@ -3764,6 +3775,26 @@
     openWhatsAppBusiness(clientName, msg);
   }
 
+  
+  function shareReceiptWhatsApp(clientName, amount, balanceAfter, receiptId, dateStr) {
+    const msg = `✅ *إيصال استلام نقدية* | *ماسا جروب للإلكترونيات* ⚡
+━━━━━━━━━━━━━━━━━━
+👤 *العميل:* ${clientName}
+📅 *التاريخ:* ${dateStr.split(' ')[0]}
+🔖 *رقم السند:* ${receiptId}
+━━━━━━━━━━━━━━━━━━
+💵 *المبلغ المدفوع (دفعة من الحساب):* ${amount.toLocaleString()} ج.م
+📝 *البيان:* تحصيل نقدي (كاش/تحويل)
+━━━━━━━━━━━━━━━━━━
+⚠️ *إجمالي الرصيد المتبقي (بعد خصم الدفعة):*
+🔴 *${balanceAfter.toLocaleString()} ج.م*
+
+شرفنا التعامل معكم 🤝
+م. محمد نجاح | 01002902102 - 01270919376
+🌐 masa-vip.com`;
+    openWhatsAppBusiness(clientName, msg);
+  }
+
   function openDetailedStatement(kind, entityName) {
     const normTarget = normalizeArabic(entityName);
     const ledger = [];
@@ -3871,11 +3902,34 @@
     const foundClient = findClientInMemory(inv.clientName);
     const currentTotalDebt = foundClient ? foundClient.balance : inv.remaining;
     const lines = inv.items.map(it => {
-      const subInfo = (it.kind === 'service' && it.username) ? ` [يوزر: ${it.username} - ينتهي: ${it.endDate}]` : '';
-      return `• ${it.name}${subInfo} (${it.qty} × ${it.price}) = ${it.qty * it.price} ج.م`;
+      const subInfo = (it.kind === 'service' && it.username) ? ` [يوزر: ${it.username}]` : '';
+      return `▪️ ${it.qty} × ${it.name}${subInfo} (${it.price.toLocaleString()} ج.م)`;
     }).join('\n');
-    const titleLabel = inv.orderType === 'deferred' ? 'أمر شحن / بيع مؤجل' : 'فاتورة مبيعات';
-    const msg = `*${titleLabel} - ماسا جروب للإلكترونيات* ⚡\nرقم: *${inv.id}* | العميل: *${inv.clientName}*\n------------------\n${lines}\n------------------\nالإجمالي: *${inv.total.toLocaleString()} ج.م*\nالمدفوع: *${inv.paid.toLocaleString()} ج.م*\nالمتبقي: *${inv.remaining.toLocaleString()} ج.م*\nإجمالي الرصيد المستحق: *${currentTotalDebt.toLocaleString()} ج.م*\n01002902102 / 01270919376`;
+    
+    const titleLabel = inv.orderType === 'deferred' ? 'أمر شحن / بيع مؤجل' : 'فـاتـورة مـبـيـعـات';
+    
+    const msg = `🧾 *${titleLabel}* | *ماسا جروب للإلكترونيات* ⚡
+━━━━━━━━━━━━━━━━━━
+👤 *العميل:* ${inv.clientName}
+📅 *التاريخ:* ${inv.date ? inv.date.split(' ')[0] : new Date().toISOString().split('T')[0]}
+🔖 *رقم الفاتورة:* ${inv.id}
+━━━━━━━━━━━━━━━━━━
+*تفاصيل الطلب:*
+${lines}
+
+*الإجمالي:* ${inv.total.toLocaleString()} ج.م
+━━━━━━━━━━━━━━━━━━
+💰 *إجمالي الفاتورة:* ${inv.total.toLocaleString()} ج.م
+💵 *المدفوع الآن:* ${inv.paid.toLocaleString()} ج.م
+${inv.remaining > 0 ? `🔴 *المتبقي منها:* ${inv.remaining.toLocaleString()} ج.م` : `✅ *المتبقي منها:* 0 ج.م`}
+━━━━━━━━━━━━━━━━━━
+⚠️ *إجمالي الرصيد المستحق (القديم + الجديد):*
+🔖 *${currentTotalDebt.toLocaleString()} ج.م*
+
+شرفنا التعامل معكم 🤝
+م. محمد نجاح | 01002902102 - 01270919376
+🌐 masa-vip.com`;
+
     openWhatsAppBusiness(inv.clientName, msg);
   }
 
