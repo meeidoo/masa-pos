@@ -1897,6 +1897,34 @@
     document.getElementById('unifiedPayModal').style.display = 'flex';
   }
 
+
+  function applyClientPaymentToInvoices(clientName, payAmount) {
+    let remainingPay = payAmount;
+    const clientInvoices = oldInvoices.filter(inv => normalizeArabic(inv.clientName) === normalizeArabic(clientName) && inv.orderType === 'instant' && inv.remaining > 0);
+    for (let inv of clientInvoices) {
+      if (remainingPay <= 0) break;
+      const applyToThis = Math.min(remainingPay, inv.remaining);
+      inv.paid = (Number(inv.paid) || 0) + applyToThis;
+      inv.remaining = Math.max(0, (Number(inv.total) || 0) - inv.paid);
+      remainingPay -= applyToThis;
+      enqueueServerSync({ type: 'pay_invoice_balance', pin: sessionAdminPin, invoiceId: inv.id, amount: applyToThis }, false);
+    }
+  }
+
+
+  function applyClientPaymentToInvoices(clientName, payAmount) {
+    let remainingPay = payAmount;
+    const clientInvoices = oldInvoices.filter(inv => normalizeArabic(inv.clientName) === normalizeArabic(clientName) && inv.orderType === 'instant' && inv.remaining > 0);
+    for (let inv of clientInvoices) {
+      if (remainingPay <= 0) break;
+      const applyToThis = Math.min(remainingPay, inv.remaining);
+      inv.paid = (Number(inv.paid) || 0) + applyToThis;
+      inv.remaining = Math.max(0, (Number(inv.total) || 0) - inv.paid);
+      remainingPay -= applyToThis;
+      enqueueServerSync({ type: 'pay_invoice_balance', pin: sessionAdminPin, invoiceId: inv.id, amount: applyToThis }, false);
+    }
+  }
+
   function submitUnifiedPayCollect() {
     const editId = document.getElementById('editPaymentId').value;
     const targetName = cleanEgyptianPhone(document.getElementById('uniTargetInput').value.trim());
@@ -1937,19 +1965,8 @@
         else if (remAlertDate) cli.reminderDate = remAlertDate;
       }
       paymentsList.unshift({ id: 'REC-NEW', date: nowStr, clientName: targetName, amount, balanceAfter: cli ? cli.balance : -amount, note });
-      
-      const linkId = document.getElementById('linkedAlertId').value;
-      const linkSrc = document.getElementById('linkedAlertSource').value;
-      if (linkSrc === 'instant_debt' && linkId) {
-        const inv = oldInvoices.find(x => x.id === linkId);
-        if (inv) {
-          inv.paid = (Number(inv.paid) || 0) + amount;
-          inv.remaining = Math.max(0, (Number(inv.total) || 0) - inv.paid);
-        }
-        enqueueServerSync({ type: 'pay_invoice_balance', pin: sessionAdminPin, invoiceId: linkId, amount });
-      } else {
-        enqueueServerSync({ type: 'collect_payment', pin: sessionAdminPin, clientName: targetName, amount, note, nextReminder: remAlertDate });
-      }
+      applyClientPaymentToInvoices(targetName, amount);
+      enqueueServerSync({ type: 'collect_payment', pin: sessionAdminPin, clientName: targetName, amount, note, nextReminder: remAlertDate });
     } else {
       const sup = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(targetName));
       if (sup) { sup.balance -= amount; sup.lastUpdate = nowStr; }
@@ -2668,7 +2685,7 @@
       showToast(`✅ تم تحويل الأمر ${id} إلى فاتورة بيع معتمدة!`);
       enqueueServerSync({ type: 'complete_deferred', pin: sessionAdminPin, invoiceId: id, paidAmount: Number(paidVal) });
     } else if (source === 'instant_debt') {
-      openUnifiedPayCollectModal('client', target, amount, { id, source: 'instant_debt', amount });
+      openUnifiedPayCollectModal('client', target, amount, { id, source: 'client_rem', amount });
     } else if (source === 'client_rem') {
       openUnifiedPayCollectModal('client', id, amount, { id, source, amount });
     } else if (source === 'custom') {
@@ -3573,7 +3590,7 @@
 
     if (prod.kind === 'service') {
       const m = Number(extraService.subMonths) || 12;
-      const labels = { 3: '3 شهور', 6: '6 شهور', 12: 'سنة' };
+      const labels = { 1: 'شهر', 3: '3 شهور', 6: '6 شهور', 12: 'سنة', 13: 'سنة وشهر', 14: 'سنة وشهرين', 15: 'سنة و3 شهور' };
       invoiceItems.push({
         name: prod.name, qty, price: unitPrice, kind: 'service',
         username: extraService.username || '', subMonths: m,
@@ -3620,9 +3637,13 @@
             <div class="service-inline-row">
               <input type="text" placeholder="اكتب اليوزر..." value="${item.username || ''}" oninput="updateServiceField(${idx}, 'username', this.value)">
               <select onchange="updateServiceDuration(${idx}, this.value)">
+                <option value="1" ${item.subMonths == 1 ? 'selected' : ''}>شهر</option>
                 <option value="3" ${item.subMonths == 3 ? 'selected' : ''}>3 شهور</option>
                 <option value="6" ${item.subMonths == 6 ? 'selected' : ''}>6 شهور</option>
                 <option value="12" ${item.subMonths == 12 ? 'selected' : ''}>سنة</option>
+                <option value="13" ${item.subMonths == 13 ? 'selected' : ''}>سنة وشهر</option>
+                <option value="14" ${item.subMonths == 14 ? 'selected' : ''}>سنة وشهرين</option>
+                <option value="15" ${item.subMonths == 15 ? 'selected' : ''}>سنة و3 شهور</option>
                 <option value="manual" ${item.subMonths === 'manual' ? 'selected' : ''}>تعديل يدوي</option>
               </select>
               ${item.subMonths === 'manual'
@@ -3642,7 +3663,7 @@
   function updateServiceDuration(idx, val) {
     if (val === 'manual') { invoiceItems[idx].subMonths = 'manual'; invoiceItems[idx].durationLabel = 'مدة مخصصة'; renderInvoiceItems(); return; }
     const m = Number(val);
-    const labels = { 3: '3 شهور', 6: '6 شهور', 12: 'سنة' };
+    const labels = { 1: 'شهر', 3: '3 شهور', 6: '6 شهور', 12: 'سنة', 13: 'سنة وشهر', 14: 'سنة وشهرين', 15: 'سنة و3 شهور' };
     invoiceItems[idx].subMonths = m; invoiceItems[idx].durationLabel = labels[m] || (m + ' شهر'); invoiceItems[idx].endDate = calcEndDateStr(m);
     renderInvoiceItems();
   }
