@@ -33,7 +33,7 @@
     .nav-tabs { display: flex; background: var(--secondary); border-top: 1px solid #334155; max-width: 1350px; margin: 0 auto; overflow-x: auto; scrollbar-width: none; width: 100%; }
     .nav-tabs::-webkit-scrollbar { display: none; }
     .nav-tab {
-      flex: 1; min-width: 60px; padding: 8px 4px; text-align: center; font-size: 11px; font-weight: bold;
+      flex: 0 0 auto; min-width: max-content; padding: 9px 10px; text-align: center; font-size: 11.5px; font-weight: bold;
       color: #94a3b8; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap;
     }
     .nav-tab.active { color: #fff; border-bottom-color: #38bdf8; background: rgba(56, 189, 248, 0.12); }
@@ -51,10 +51,51 @@
     .pos-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
     .desktop-catalog-panel { display: none; }
     @media (min-width: 900px) {
-      body { padding-bottom: 190px; }
-      .tab-content { padding: 12px; }
-      .pos-layout { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); align-items: start; }
+      body { padding-top: 106px; padding-bottom: 205px; font-size: 15px; }
+      .brand-bar { padding: 10px 18px; }
+      .brand-title { font-size: 18px; }
+      .conn-badge { font-size: 12.5px; padding: 5px 12px; }
+      .lock-btn { font-size: 12.5px; padding: 6px 12px; }
+      .nav-tabs { padding: 0 12px; gap: 4px; }
+      .nav-tab { padding: 12px 14px; font-size: 14px; min-width: auto; }
+      .tab-badge { font-size: 11px; padding: 2px 7px; }
+      .tab-content { padding: 16px; }
+      .pos-layout { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); align-items: start; gap: 16px; }
       .desktop-catalog-panel { display: block; }
+      .card { padding: 16px; }
+      .card-title { font-size: 16px; }
+      .invoice-top-card { padding: 14px 16px; }
+      .top-total-label { font-size: 13.5px; }
+      .header-total { font-size: 26px; }
+      .client-inputs input { padding: 11px 12px; font-size: 15px; }
+      .client-inputs select { padding: 11px 8px; font-size: 14.5px; width: 95px; }
+      .add-cli-quick-btn { padding: 0 14px; font-size: 16px; }
+      .balance-strip { font-size: 13px; margin-top: 8px; }
+      .rem-chip { padding: 7px 12px; font-size: 12.5px; }
+      .order-mode-bar input[type="date"] { padding: 6px 10px; font-size: 13px; max-width: 155px; }
+      .search-box-wrap input { padding: 12px 14px; font-size: 15px; }
+      .brand-pill { padding: 7px 14px; font-size: 13px; }
+      .inv-item-name { font-size: 16px; }
+      .inv-item-sub { font-size: 16.5px; }
+      .qty-btn { width: 34px; height: 34px; font-size: 19px; }
+      .price-edit-input { width: 88px; padding: 6px; font-size: 15px; }
+      .btn-sm { padding: 7px 11px; font-size: 13px; }
+      .cat-item-title { font-size: 15px; }
+      .cat-item-meta { font-size: 13px; }
+      th { padding: 11px 8px; font-size: 13.5px; }
+      td { padding: 10px 8px; font-size: 13.5px; }
+      .kpi-label { font-size: 13px; }
+      .kpi-val { font-size: 21px; }
+      .filter-pill { padding: 8px 14px; font-size: 13px; }
+      .form-group label { font-size: 13.5px; }
+      .form-group input, .form-group select, .form-group textarea { padding: 11px; font-size: 15px; }
+      .voice-fallback-row input { padding: 10px 12px; font-size: 14.5px; }
+      .voice-fallback-row button { padding: 0 16px; font-size: 14px; }
+      .footer-totals { font-size: 15px; }
+      .footer-totals strong { font-size: 20px !important; }
+      .pay-row label { font-size: 14px !important; }
+      .pay-row input { width: 115px; padding: 8px; font-size: 16px; }
+      .mic-btn, .save-btn { padding: 13px 12px; font-size: 16px; }
     }
 
     .card { background: #fff; border-radius: 13px; padding: 10px; margin-bottom: 9px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow-x: auto; width: 100%; }
@@ -1062,6 +1103,31 @@
     </div>
   </div>
 
+  <div id="editSupplierModal" class="modal-overlay">
+    <div class="modal-box" onkeypress="if(event.key==='Enter' && event.target.tagName !== 'TEXTAREA') { event.preventDefault(); saveSupplierModal(); }">
+      <h3 style="margin:0 0 10px;color:#0f172a;font-size:15px;">🏭 تعديل بيانات المورد</h3>
+      <input type="hidden" id="editOrigSupplierName">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>اسم المورد أو رقمه</label>
+          <input type="text" id="supModalName" oninput="this.value = cleanEgyptianPhone(this.value)">
+        </div>
+        <div class="form-group full">
+          <label>الرصيد المستحق له (ج.م)</label>
+          <input type="number" id="supModalBalance" value="0">
+        </div>
+        <div class="form-group full">
+          <label>ملاحظات / عنوان / رقم إضافي</label>
+          <textarea id="supModalNotes" rows="2"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px;margin-top:12px;">
+        <button onclick="saveSupplierModal()" style="flex:1;background:var(--success);color:#fff;border:none;padding:11px;border-radius:10px;font-weight:bold;">💾 حفظ التعديلات</button>
+        <button onclick="document.getElementById('editSupplierModal').style.display='none'" style="flex:1;background:#e2e8f0;color:#334155;border:none;padding:11px;border-radius:10px;font-weight:bold;">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
   <div id="pinModal" class="modal-overlay">
     <div class="modal-box" style="max-width:330px;text-align:center;">
       <div style="font-size:30px;margin-bottom:6px;">🔐</div>
@@ -1320,10 +1386,14 @@
   function executeDirectVoicePaymentOrCollect(rawQuery, amount, preferredType = 'auto') {
     const amt = Number(amount) || 0;
     const cleanQ = cleanEgyptianPhone(rawQuery || '').trim();
+    const isSupHint = (preferredType === 'supplier');
     if (!cleanQ || amt <= 0) {
-      ensureAdminUnlockedThenRun("أدخل الرقم السري للإدارة لفتح نافذة السداد والتحصيل", () => {
-        openUnifiedPayCollectModal(preferredType === 'supplier' ? 'supplier' : 'client', cleanQ, amt || '');
-      });
+      ensureAdminUnlockedThenRun(
+        isSupHint ? "أدخل الرقم السري للإدارة لفتح نافذة سداد المورد" : "أدخل الرقم السري للإدارة لفتح نافذة السداد والتحصيل",
+        () => {
+          openUnifiedPayCollectModal(isSupHint ? 'supplier' : 'client', cleanQ, amt || '');
+        }
+      );
       return;
     }
 
@@ -1395,9 +1465,10 @@
       `).join('');
       document.getElementById('brandPickerModal').style.display = 'flex';
     } else {
+      const fallbackType = isSupHint ? 'supplier' : 'client';
       ensureAdminUnlockedThenRun("أدخل الرقم السري للإدارة لفتح نافذة السداد والتحصيل", () => {
-        openUnifiedPayCollectModal('client', cleanQ, amt);
-        showToast(`⚠️ "${cleanQ}" غير مسجل، اختر النوع وأكمل السند`);
+        openUnifiedPayCollectModal(fallbackType, cleanQ, amt);
+        showToast(`⚠️ "${cleanQ}" غير مسجل، أكمل البيانات واضغط حفظ`);
       });
     }
   }
@@ -2130,10 +2201,14 @@
 
     document.getElementById('suppliersTableBody').innerHTML = suppliersList.map(s => `
       <tr>
-        <td style="font-weight:bold;">${s.name}</td>
+        <td style="text-align:right;font-weight:bold;">${s.name}${s.notes ? `<br><span style="font-size:10px;color:#64748b;font-weight:normal;">${s.notes}</span>` : ''}</td>
         <td style="font-weight:900;color:${s.balance > 0 ? '#dc2626' : '#16a34a'};">${s.balance.toLocaleString()} ج.م</td>
         <td style="font-size:10px;">📅 ${s.lastUpdate || '-'}</td>
-        <td><button class="btn-sm" style="background:#dcfce7;color:#166534;" onclick="openUnifiedPayCollectModal('supplier', '${s.name.replace(/'/g, "\\'")}', ${s.balance > 0 ? s.balance : ''})">💸 سداد</button></td>
+        <td style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn-sm" style="background:#dcfce7;color:#166534;" onclick="openUnifiedPayCollectModal('supplier', '${s.name.replace(/'/g, "\\'")}', ${s.balance > 0 ? s.balance : ''})">💸</button>
+          <button class="btn-sm" style="background:#fef3c7;color:#b45309;" onclick="openEditSupplierModal('${s.name.replace(/'/g, "\\'")}')">✏️</button>
+          <button class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteSupplierByName('${s.name.replace(/'/g, "\\'")}')">🗑️</button>
+        </td>
       </tr>
     `).join('') || `<tr><td colspan="4" style="color:#64748b;padding:12px;">لا يوجد موردون مسجلون بعد</td></tr>`;
 
@@ -2564,6 +2639,13 @@
     if (isEdit) {
       const c = clients.find(x => x.name === origName);
       if (c) Object.assign(c, { name, tier, behavior, balance, reminderDate, notes, lastUpdate: nowStr });
+      if (origName !== name) {
+        oldInvoices.forEach(x => { if (x.clientName === origName) x.clientName = name; });
+        paymentsList.forEach(x => { if (x.clientName === origName) x.clientName = name; });
+        subscriptionsList.forEach(x => { if (x.clientName === origName) x.clientName = name; });
+        rmaList.forEach(x => { if (x.clientName === origName) x.clientName = name; });
+        customAlertsList.forEach(x => { if (x.target === origName) x.target = name; });
+      }
     } else {
       clients.unshift({ name, tier, behavior, balance, reminderDate, notes, lastUpdate: nowStr, invoiceCount: 1 });
       document.getElementById('clientName').value = name;
@@ -2638,6 +2720,44 @@
     renderAllViews();
     showToast("🗑️ تم حذف الاشتراك");
     enqueueServerSync({ type: 'delete_subscription', pin: sessionAdminPin, id });
+  }
+
+  function openEditSupplierModal(name) {
+    const s = suppliersList.find(x => x.name === name);
+    if (!s) return;
+    document.getElementById('editOrigSupplierName').value = s.name;
+    document.getElementById('supModalName').value = s.name;
+    document.getElementById('supModalBalance').value = s.balance || 0;
+    document.getElementById('supModalNotes').value = s.notes || '';
+    document.getElementById('editSupplierModal').style.display = 'flex';
+  }
+
+  function saveSupplierModal() {
+    const origName = document.getElementById('editOrigSupplierName').value;
+    const name = cleanEgyptianPhone(document.getElementById('supModalName').value.trim());
+    if (!name) return alert("اكتب اسم المورد");
+    const balance = Number(document.getElementById('supModalBalance').value) || 0;
+    const notes = document.getElementById('supModalNotes').value.trim();
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+    const s = suppliersList.find(x => x.name === origName);
+    if (s) Object.assign(s, { name, balance, notes, lastUpdate: nowStr });
+    if (origName !== name) {
+      supplierLogsList.forEach(x => { if (x.supplier === origName) x.supplier = name; });
+      customAlertsList.forEach(x => { if (x.target === origName) x.target = name; });
+    }
+    document.getElementById('editSupplierModal').style.display = 'none';
+    renderAllViews();
+    showToast(`✅ تم تعديل بيانات المورد "${name}"`);
+    enqueueServerSync({ type: 'update_supplier', pin: sessionAdminPin, originalName: origName, name, balance, notes });
+  }
+
+  function deleteSupplierByName(name) {
+    if (!confirm(`هل تريد حذف ملف المورد "${name}" نهائياً؟`)) return;
+    suppliersList = suppliersList.filter(s => s.name !== name);
+    renderAllViews();
+    showToast(`🗑️ تم حذف المورد "${name}"`);
+    enqueueServerSync({ type: 'delete_supplier', pin: sessionAdminPin, name });
   }
 
   function openEditSupLogModal(id) {
@@ -3352,13 +3472,19 @@
     }
 
     const payActionRegex = /(?:^|\s)(?:سداد|سدد|سد|دفع|ادفع|دفعت|تحصيل|حصل|حصلت|قبض|قبضت|نزل من حساب|خصم من حساب|حاسب|جاب|حول|اديت|تصفيه حساب)(?:\s|$)/;
-    if (payActionRegex.test(text)) {
+    if (payActionRegex.test(text) || text.includes('مورد')) {
       const amtMatch = text.match(/(\d+)/);
       const amt = amtMatch ? Number(amtMatch[1]) : 0;
+      const detectedSup = suppliersList.find(s => {
+        const sPart = normalizeArabic(s.name.split(/[-–0-9]/)[0]).trim();
+        return sPart.length >= 2 && text.includes(sPart);
+      });
+      const isSupplierCmd = text.includes('مورد') || text.includes('للمورد') || Boolean(detectedSup);
       let cleanTarget = rawText
-        .replace(/ضيف|أضف|اضف|سداد|سدد|سد|دفع|ادفع|دفعت|تحصيل|حصل|حصلت|قبض|قبضت|نزل من حساب|خصم من حساب|حاسب|جاب|حول|اديت|تصفية حساب|للمورد|من العميل|من حسابه|من الحساب|على الحساب|جنيه|ج|\d+/g, '')
+        .replace(/ضيف|أضف|اضف|سداد|سدد|سد|دفع|ادفع|دفعت|تحصيل|حصل|حصلت|قبض|قبضت|نزل من حساب|خصم من حساب|حاسب|جاب|حول|اديت|تصفية حساب|للمورد|المورد|مورد|من العميل|للعميل|من حسابه|من الحساب|على الحساب|جنيه|ج|\d+/g, '')
         .replace(/\s+/g, ' ').trim();
-      executeDirectVoicePaymentOrCollect(cleanTarget, amt, 'auto');
+      if (!cleanTarget && detectedSup) cleanTarget = detectedSup.name;
+      executeDirectVoicePaymentOrCollect(cleanTarget, amt, isSupplierCmd ? 'supplier' : 'auto');
       return;
     }
 
@@ -3384,6 +3510,19 @@
       if (matchedCli) {
         document.getElementById('clientName').value = matchedCli.name;
         checkClientBalance();
+      } else {
+        // استخراج اسم عميل جديد من الجملة الحرة (مثل: بعت لحسام جهاز سيناتور / اخد محمود كاميرا / فاتورة لـ أحمد)
+        const cliPattern = /(?:بعت\s+ل|بعت|اخد|أخد|خد|سحب|طلع\s+ل|صرفت\s+ل|فاتوره\s+ل|فاتورة\s+ل|للعميل|عميل)\s*([\u0621-\u064A]{3,}(?:\s+[\u0621-\u064A]{3,})?)/;
+        const cliMatch = rawText.match(cliPattern);
+        if (cliMatch && cliMatch[1]) {
+          let extractedName = cliMatch[1].trim();
+          const stopWords = ['جهاز', 'قطعه', 'قطعة', 'حته', 'علبه', 'علبة', 'رسيفر', 'ريسيفر', 'كاميرا', 'اشتراك', 'سيرفر', 'واحد', 'اتنين', 'تلاته', 'خالص', 'كاش', 'جمله', 'فني', 'قطاعي'];
+          const nameWords = extractedName.split(/\s+/).filter(w => !stopWords.includes(normalizeArabic(w)) && !catalog.some(p => normalizeArabic(p.name).includes(normalizeArabic(w))));
+          if (nameWords.length > 0) {
+            document.getElementById('clientName').value = nameWords.join(' ');
+            checkClientBalance();
+          }
+        }
       }
     }
 
