@@ -1323,6 +1323,9 @@
           <div id="totalSuppliersDebt" style="font-size:20px;font-weight:900;color:#38bdf8;">0 ج.م</div>
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button onclick="openAddSupplierModal()" style="background:#0284c7;color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
+            ➕ إضافة مورد
+          </button>
           <button onclick="openPurchaseModal()" style="background:var(--accent);color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             📦 فاتورة شراء
           </button>
@@ -1529,6 +1532,9 @@
             </select>
           </div>
           <div style="font-size:10.5px;color:#1d4ed8;margin-top:4px;">⚡ سيتم حساب أسعار البيع تلقائياً (جملة +5% | فني +10% | قطاعي +20%)</div>
+        </div>
+        <div id="purExistingUpdateWrap" style="display:none;background:#f0fdf4;padding:6px 8px;border-radius:8px;margin-bottom:7px;font-size:11px;color:#166534;font-weight:bold;">
+          ✅ سيتم تحديث التكلفة بآخر سعر شراء وتحديث أسعار البيع تلقائياً (+5% / +10% / +20%)
         </div>
 
 
@@ -2303,7 +2309,15 @@
         renderAllViews();
       }
     } catch (e) {
-      if (!silent) document.getElementById('connBadge').innerText = "⚠️ خطأ اتصال";
+      console.error("Load error:", e);
+      const badge = document.getElementById('connBadge');
+      if (badge) {
+        badge.innerText = "⚠️ خطأ اتصال (تحقق من النشر)";
+        badge.style.color = "#fca5a5";
+        badge.style.borderColor = "rgba(239,68,68,0.5)";
+        badge.style.background = "rgba(239,68,68,0.15)";
+      }
+      if (!silent) showToast("⚠️ تعذر الاتصال بسيرفر جوجل شيت — تأكد من نشر Apps Script كـ Anyone", true);
     }
   }
 
@@ -2887,9 +2901,9 @@
       name: existing ? existing.name : name,
       isNew: !existing,
       kind, qty, unitCost,
-      wholesale: unitCost + 50,
-      technician: unitCost + 100,
-      retail: unitCost + 200,
+      wholesale: Math.round(unitCost * 1.05 * 100) / 100,
+      technician: Math.round(unitCost * 1.10 * 100) / 100,
+      retail: Math.round(unitCost * 1.20 * 100) / 100,
       aliases: existing ? existing.aliases : generateSmartAliases(name),
       updateSellPrices: true
     });
@@ -3013,12 +3027,12 @@
         if (prod.kind !== 'service') prod.stock += it.qty;
         prod.cost = it.unitCost;
         if (it.updateSellPrices) {
-          prod.wholesale = it.unitCost + 50; prod.technician = it.unitCost + 100; prod.retail = it.unitCost + 200;
+          prod.wholesale = Math.round(it.unitCost * 1.05 * 100) / 100; prod.technician = Math.round(it.unitCost * 1.10 * 100) / 100; prod.retail = Math.round(it.unitCost * 1.20 * 100) / 100;
         }
       } else {
         catalog.push({
           name: it.name, aliases: it.aliases, cost: it.unitCost,
-          wholesale: it.unitCost + 50, technician: it.unitCost + 100, retail: it.unitCost + 200,
+          wholesale: Math.round(it.unitCost * 1.05 * 100) / 100, technician: Math.round(it.unitCost * 1.10 * 100) / 100, retail: Math.round(it.unitCost * 1.20 * 100) / 100,
           stock: it.kind === 'service' ? 0 : it.qty, kind: it.kind, minStock: 2
         });
       }
@@ -4111,9 +4125,18 @@
     enqueueServerSync({ type: 'delete_subscription', pin: sessionAdminPin, id });
   }
 
+  function openAddSupplierModal() {
+    document.getElementById('editOrigSupplierName').value = '';
+    document.querySelector('#editSupplierModal h3').innerText = '➕ إضافة مورد جديد';
+    document.getElementById('supModalName').value = '';
+    document.getElementById('supModalBalance').value = '0';
+    document.getElementById('supModalNotes').value = '';
+    document.getElementById('editSupplierModal').style.display = 'flex';
+  }
   function openEditSupplierModal(name) {
     const s = suppliersList.find(x => x.name === name);
     if (!s) return;
+    document.querySelector('#editSupplierModal h3').innerText = '🏭 تعديل بيانات المورد';
     document.getElementById('editOrigSupplierName').value = s.name;
     document.getElementById('supModalName').value = s.name;
     document.getElementById('supModalBalance').value = s.balance || 0;
@@ -4122,12 +4145,24 @@
   }
 
   function saveSupplierModal() {
-    const origName = document.getElementById('editOrigSupplierName').value;
+    const origName = document.getElementById('editOrigSupplierName').value.trim();
+    const isAdd = !origName;
     const name = cleanEgyptianPhone(document.getElementById('supModalName').value.trim());
     if (!name) return alert("اكتب اسم المورد");
     const balance = Number(document.getElementById('supModalBalance').value) || 0;
     const notes = document.getElementById('supModalNotes').value.trim();
     const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+    if (isAdd) {
+      const exists = suppliersList.find(x => normalizeArabic(x.name) === normalizeArabic(name));
+      if (exists) return alert("⚠️ هذا المورد مسجل بالفعل باسم: " + exists.name);
+      suppliersList.unshift({ name, balance, notes, lastUpdate: nowStr });
+      document.getElementById('editSupplierModal').style.display = 'none';
+      renderAllViews();
+      showToast(`✅ تم إضافة المورد "${name}"`);
+      enqueueServerSync({ type: 'add_supplier', pin: sessionAdminPin, name, balance, notes });
+      return;
+    }
 
     const s = suppliersList.find(x => x.name === origName);
     if (s) Object.assign(s, { name, balance, notes, lastUpdate: nowStr });
