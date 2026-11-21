@@ -1217,7 +1217,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v3.6</span>
+          <span>ERP Pro v4.0</span>
         </div>
         <button id="lockAdminBtn" class="lock-btn" onclick="lockAdminSession()">🔒 قفل الإدارة</button>
         <span class="conn-badge" id="connBadge">جاري الاتصال...</span>
@@ -1722,9 +1722,10 @@
   <div id="purchaseModal" class="modal-overlay">
     <div class="modal-box" style="max-width:490px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 style="margin:0;color:#0f172a;font-size:15px;">📦 فاتورة شراء متعددة الأصناف</h3>
+        <h3 id="purModalTitle" style="margin:0;color:#0f172a;font-size:15px;">📦 فاتورة شراء متعددة الأصناف</h3>
         <button onclick="document.getElementById('purchaseModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
       </div>
+      <input type="hidden" id="editPurchaseId">
 
       <div class="form-group" style="position:relative;margin-bottom:8px;">
         <label>اسم المورد أو رقمه (اختر من القائمة أو اكتب جديد)</label>
@@ -3191,6 +3192,8 @@
 
   function openPurchaseModal() {
     purchaseCart = [];
+    document.getElementById('editPurchaseId').value = '';
+    document.getElementById('purModalTitle').innerText = '📦 فاتورة شراء متعددة الأصناف';
     document.getElementById('purSupplierName').value = '';
     document.getElementById('purSupplierBalStrip').innerText = 'الرصيد السابق للمورد: 0 ج.م';
     document.getElementById('purProdInput').value = '';
@@ -3199,7 +3202,39 @@
     document.getElementById('purPaid').value = '0';
     document.getElementById('purNewProdOptions').style.display = 'none';
     document.getElementById('purExistingUpdateWrap').style.display = 'none';
-    setPurchasePayMode('instant');
+    setPurchasePayMode('deferred');
+    renderPurchaseCart();
+    document.getElementById('purchaseModal').style.display = 'flex';
+  }
+
+  function loadPurchaseForEdit(logId) {
+    const l = supplierLogsList.find(x => x.id === logId);
+    if (!l) return;
+    document.getElementById('editPurchaseId').value = l.id;
+    document.getElementById('purModalTitle').innerText = `✏️ تعديل فاتورة شراء (${l.id})`;
+    document.getElementById('purSupplierName').value = l.supplier || '';
+    document.getElementById('purProdInput').value = '';
+    document.getElementById('purQty').value = '';
+    document.getElementById('purUnitCost').value = '';
+    document.getElementById('purNewProdOptions').style.display = 'none';
+    document.getElementById('purExistingUpdateWrap').style.display = 'none';
+
+    purchaseCart = (Array.isArray(l.items) ? l.items : []).map(it => ({
+      name: it.name,
+      isNew: false,
+      kind: it.kind || 'stock',
+      qty: Number(it.qty) || 1,
+      unitCost: Number(it.unitCost) || 0,
+      wholesale: Math.round((Number(it.unitCost) || 0) * 1.05 * 100) / 100,
+      technician: Math.round((Number(it.unitCost) || 0) * 1.10 * 100) / 100,
+      retail: Math.round((Number(it.unitCost) || 0) * 1.20 * 100) / 100,
+      aliases: '',
+      updateSellPrices: true
+    }));
+
+    document.getElementById('purPaid').value = Number(l.paid) || 0;
+    setPurchasePayMode((Number(l.remaining) || 0) > 0 ? 'deferred' : 'instant');
+    checkSupplierPrevBalance();
     renderPurchaseCart();
     document.getElementById('purchaseModal').style.display = 'flex';
   }
@@ -3421,6 +3456,7 @@
   }
 
   function submitMultiSupplierPurchase() {
+    const editLogId = document.getElementById('editPurchaseId').value.trim();
     const supplier = cleanEgyptianPhone(document.getElementById('purSupplierName').value.trim());
     if (!supplier || purchaseCart.length === 0) return alert("اكتب اسم المورد وأضف صنفاً واحداً على الأقل");
 
@@ -3436,6 +3472,30 @@
         const a = Number(amts[i].value) || 0;
         const d = dates[i].value;
         if (a > 0 && d) installments.push({ amount: a, date: d });
+      }
+    }
+
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+    if (editLogId) {
+      const oldLog = supplierLogsList.find(x => x.id === editLogId);
+      if (oldLog) {
+        (oldLog.items || []).forEach(oi => {
+          if (oi.kind !== 'service') {
+            const p = catalog.find(x => x.name === oi.name);
+            if (p) p.stock -= (Number(oi.qty) || 0);
+          }
+        });
+        const oldSup = suppliersList.find(s => isSameEntityTarget(s.name, oldLog.supplier));
+        if (oldSup) oldSup.balance -= (Number(oldLog.remaining) || 0);
+        settleCustomAlertsInMemory(oldLog.supplier, 999999999);
+        oldLog.date = nowStr;
+        oldLog.supplier = supplier;
+        oldLog.total = total;
+        oldLog.paid = paid;
+        oldLog.remaining = rem;
+        oldLog.details = purchaseCart.map(x => `${x.qty} × ${x.name}`).join(' + ');
+        oldLog.items = [...purchaseCart];
       }
     }
 
@@ -3456,20 +3516,22 @@
       }
     });
 
-    const sup = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(supplier));
-    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const sup = suppliersList.find(s => isSameEntityTarget(s.name, supplier));
     if (sup) { sup.balance += rem; sup.lastUpdate = nowStr; }
-    else suppliersList.push({ name: supplier, balance: rem, lastUpdate: nowStr });
+    else suppliersList.push({ name: supplier, balance: rem, lastUpdate: nowStr, notes: '' });
 
-    supplierLogsList.unshift({
-      id: 'PUR-NEW', date: nowStr, supplier, kind: 'شراء بضاعة', total, paid, remaining: rem,
-      details: purchaseCart.map(x => `${x.qty} × ${x.name}`).join(' + '), items: [...purchaseCart]
-    });
+    const displayId = editLogId || ('PUR-' + String(supplierLogsList.length + 1).padStart(4, '0'));
+    if (!editLogId) {
+      supplierLogsList.unshift({
+        id: displayId, date: nowStr, supplier, kind: 'شراء بضاعة', total, paid, remaining: rem,
+        details: purchaseCart.map(x => `${x.qty} × ${x.name}`).join(' + '), items: [...purchaseCart]
+      });
+    }
 
     installments.forEach((inst, idx) => {
       customAlertsList.unshift({
         id: 'ALT-NEW', date: inst.date, target: supplier,
-        title: `سداد دفعة مورد (${idx + 1} من ${installments.length})`,
+        title: `سداد دفعة مورد (${idx + 1} من ${installments.length}) - ${displayId}`,
         amount: inst.amount, kind: 'سداد مورد', status: 'نشط'
       });
     });
@@ -3477,14 +3539,13 @@
     const snapshotCart = [...purchaseCart];
     document.getElementById('purchaseModal').style.display = 'none';
     renderAllViews();
-    showToast("✅ تم حفظ فاتورة الشراء وتحديث المخزن والتنبيهات!");
+    showToast(editLogId ? `✅ تم تعديل فاتورة الشراء (${editLogId}) وتحديث المخزن والرصيد والدفعات!` : "✅ تم حفظ فاتورة الشراء وتحديث المخزن والرصيد والدفعات!");
 
     enqueueServerSync({
       type: 'save_purchase_multi', pin: sessionAdminPin,
-      supplier, paid, items: snapshotCart, installments
+      editLogId, supplier, paid, items: snapshotCart, installments
     });
   }
-
 
   let pretCart = [], sretCart = [];
 
@@ -3595,10 +3656,11 @@
       items: [...pretCart]
     });
 
+    if (netDeduct > 0) settleCustomAlertsInMemory(supplier, netDeduct);
     const snapshot = [...pretCart];
     document.getElementById('purchaseReturnModal').style.display = 'none';
     renderAllViews();
-    showToast("✅ تم اعتماد مرتجع المشتريات وخصمه من حساب المورد والمخزن!");
+    showToast("✅ تم اعتماد مرتجع المشتريات وخصمه من حساب المورد والمخزن والدفعات!");
     enqueueServerSync({ type: 'save_purchase_return', pin: sessionAdminPin, supplier, cashBack, note, items: snapshot });
   }
 
@@ -3974,24 +4036,41 @@
       return true;
     }).sort((a, b) => b.balance - a.balance);
 
-    document.getElementById('clientsTableBody').innerHTML = filtered.map(c => `
+    document.getElementById('clientsTableBody').innerHTML = filtered.map(c => {
+      const cliAlerts = customAlertsList
+        .filter(a => a.status === 'نشط' && isSameEntityTarget(a.target, c.name))
+        .sort((a, b) => String(a.date || '9999').localeCompare(String(b.date || '9999')));
+      const safeName = c.name.replace(/'/g, "\\'");
+      const alertsHtml = cliAlerts.length > 0 ? `<div style="margin-top:4px;display:flex;flex-direction:column;gap:3px;">` + cliAlerts.map(a => `
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:3px 6px;font-size:10px;display:flex;justify-content:space-between;align-items:center;gap:4px;">
+          <span>⏰ <strong>${a.date || '-'}</strong>: <strong style="color:#1d4ed8;">${(Number(a.amount) || 0).toLocaleString()} ج.م</strong></span>
+          <span style="display:flex;gap:2px;">
+            <button class="btn-sm" style="padding:2px 5px;background:#dcfce7;color:#166534;" title="تحصيل الدفعة" onclick="completeAlertAction('custom', '${a.id}', ${Number(a.amount) || 0}, '${(a.kind || '').replace(/'/g, "\\'")}', '${safeName}')">✅</button>
+            <button class="btn-sm" style="padding:2px 5px;background:#fef3c7;color:#b45309;" title="تعديل الدفعة" onclick="editAlertAction('custom', '${a.id}')">✏️</button>
+            <button class="btn-sm" style="padding:2px 5px;background:#fee2e2;color:#dc2626;" title="حذف الدفعة" onclick="cancelAlertAction('custom', '${a.id}')">🗑️</button>
+          </span>
+        </div>
+      `).join('') + `</div>` : '';
+      return `
       <tr>
         <td style="text-align:right;font-weight:bold;">
           ${c.name}
           <br><span style="font-size:9.5px;color:#64748b;font-weight:normal;">📅 ${c.lastUpdate || '-'}</span>
           ${c.reminderDate ? `<br><span style="font-size:9.5px;color:#d97706;">⏰ تذكير: ${c.reminderDate}</span>` : ''}
+          ${alertsHtml}
         </td>
         <td style="font-size:10px;">${c.tier}<br><span style="color:#64748b;">${c.behavior}</span></td>
         <td style="font-weight:900;color:${c.balance > 0 ? '#dc2626' : '#16a34a'};">${c.balance.toLocaleString()}</td>
         <td style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn-sm" style="background:#e0e7ff;color:#1e40af;" title="كشف حساب تفصيلي" onclick="openDetailedStatement('client', '${c.name.replace(/'/g, "\\'")}')">📜</button>
-          <button class="btn-sm" style="background:#dcfce7;color:#166534;" title="تحصيل" onclick="openUnifiedPayCollectModal('client', '${c.name.replace(/'/g, "\\'")}', ${c.balance > 0 ? c.balance : ''})">💵</button>
-          <button class="btn-sm" style="background:#fef3c7;color:#b45309;" title="تعديل" onclick="openAddClientModal('${c.name.replace(/'/g, "\\'")}', true)">✏️</button>
-          <button class="btn-sm" style="background:#e0f2fe;color:#0369a1;" title="واتساب" onclick="openDetailedStatement('client', '${c.name.replace(/'/g, "\\'")}')">📲</button>
-          <button class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteClientByName('${c.name.replace(/'/g, "\\'")}')">🗑️</button>
+          <button class="btn-sm" style="background:#e0e7ff;color:#1e40af;" title="كشف حساب تفصيلي" onclick="openDetailedStatement('client', '${safeName}')">📜</button>
+          <button class="btn-sm" style="background:#dcfce7;color:#166534;" title="تحصيل" onclick="openUnifiedPayCollectModal('client', '${safeName}', ${c.balance > 0 ? c.balance : ''})">💵</button>
+          <button class="btn-sm" style="background:#f3e8ff;color:#6b21a8;" title="إضافة دفعة مجدولة" onclick="openAlertModal({ target: '${safeName}', title: 'تحصيل دفعة من (${safeName})', amount: ${c.balance > 0 ? c.balance : 0} })">📅+</button>
+          <button class="btn-sm" style="background:#fef3c7;color:#b45309;" title="تعديل" onclick="openAddClientModal('${safeName}', true)">✏️</button>
+          <button class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteClientByName('${safeName}')">🗑️</button>
         </td>
       </tr>
-    `).join('') || `<tr><td colspan="4" style="color:#64748b;padding:14px;">لا يوجد عملاء مطابقون</td></tr>`;
+    `;
+    }).join('') || `<tr><td colspan="4" style="color:#64748b;padding:14px;">لا يوجد عملاء مطابقون</td></tr>`;
   }
 
   function openReceiptByIndex(idx) {
@@ -4055,19 +4134,39 @@
     suppliersList.forEach(s => { if (s.balance > 0) totalSupDebt += s.balance; });
     document.getElementById('totalSuppliersDebt').innerText = `${totalSupDebt.toLocaleString()} ج.م`;
 
-    document.getElementById('suppliersTableBody').innerHTML = suppliersList.map(s => `
+    document.getElementById('suppliersTableBody').innerHTML = suppliersList.map(s => {
+      const supAlerts = customAlertsList
+        .filter(a => a.status === 'نشط' && isSameEntityTarget(a.target, s.name))
+        .sort((a, b) => String(a.date || '9999').localeCompare(String(b.date || '9999')));
+      const safeName = s.name.replace(/'/g, "\\'");
+      const alertsHtml = supAlerts.length > 0 ? `<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px;">` + supAlerts.map(a => `
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:3px 6px;font-size:10px;display:flex;justify-content:space-between;align-items:center;gap:4px;">
+          <span>⏰ <strong>${a.date || '-'}</strong>: <strong style="color:#b45309;">${(Number(a.amount) || 0).toLocaleString()} ج.م</strong></span>
+          <span style="display:flex;gap:2px;">
+            <button class="btn-sm" style="padding:2px 5px;background:#dcfce7;color:#166534;" title="سداد هذه الدفعة" onclick="completeAlertAction('custom', '${a.id}', ${Number(a.amount) || 0}, 'سداد مورد', '${safeName}')">✅</button>
+            <button class="btn-sm" style="padding:2px 5px;background:#fef3c7;color:#b45309;" title="تعديل موعد/قيمة الدفعة" onclick="editAlertAction('custom', '${a.id}')">✏️</button>
+            <button class="btn-sm" style="padding:2px 5px;background:#fee2e2;color:#dc2626;" title="حذف الدفعة" onclick="cancelAlertAction('custom', '${a.id}')">🗑️</button>
+          </span>
+        </div>
+      `).join('') + `</div>` : '';
+      return `
       <tr>
-        <td style="text-align:right;font-weight:bold;">${s.name}${s.notes ? `<br><span style="font-size:10px;color:#64748b;font-weight:normal;">${s.notes}</span>` : ''}</td>
+        <td style="text-align:right;font-weight:bold;">
+          ${s.name}${s.notes ? `<br><span style="font-size:10px;color:#64748b;font-weight:normal;">${s.notes}</span>` : ''}
+          ${alertsHtml}
+        </td>
         <td style="font-weight:900;color:${s.balance > 0 ? '#dc2626' : '#16a34a'};">${s.balance.toLocaleString()} ج.م</td>
         <td style="font-size:10px;">📅 ${s.lastUpdate || '-'}</td>
         <td style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">
-          <button class="btn-sm" style="background:#e0e7ff;color:#1e40af;" title="كشف حساب تفصيلي" onclick="openDetailedStatement('supplier', '${s.name.replace(/'/g, "\\'")}')">📜</button>
-          <button class="btn-sm" style="background:#dcfce7;color:#166534;" title="سداد" onclick="openUnifiedPayCollectModal('supplier', '${s.name.replace(/'/g, "\\'")}', ${s.balance > 0 ? s.balance : ''})">💸</button>
-          <button class="btn-sm" style="background:#fef3c7;color:#b45309;" title="تعديل" onclick="openEditSupplierModal('${s.name.replace(/'/g, "\\'")}')">✏️</button>
-          <button class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteSupplierByName('${s.name.replace(/'/g, "\\'")}')">🗑️</button>
+          <button class="btn-sm" style="background:#e0e7ff;color:#1e40af;" title="كشف حساب تفصيلي" onclick="openDetailedStatement('supplier', '${safeName}')">📜</button>
+          <button class="btn-sm" style="background:#dcfce7;color:#166534;" title="سداد" onclick="openUnifiedPayCollectModal('supplier', '${safeName}', ${s.balance > 0 ? s.balance : ''})">💸</button>
+          <button class="btn-sm" style="background:#f3e8ff;color:#6b21a8;" title="إضافة دفعة مجدولة" onclick="openAlertModal({ target: '${safeName}', title: 'سداد دفعة مورد (${safeName})', amount: ${s.balance > 0 ? s.balance : 0} })">📅+</button>
+          <button class="btn-sm" style="background:#fef3c7;color:#b45309;" title="تعديل" onclick="openEditSupplierModal('${safeName}')">✏️</button>
+          <button class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteSupplierByName('${safeName}')">🗑️</button>
         </td>
       </tr>
-    `).join('') || `<tr><td colspan="4" style="color:#64748b;padding:12px;">لا يوجد موردون مسجلون بعد</td></tr>`;
+    `;
+    }).join('') || `<tr><td colspan="4" style="color:#64748b;padding:12px;">لا يوجد موردون مسجلون بعد</td></tr>`;
 
     document.getElementById('supplierLogsBody').innerHTML = supplierLogsList.slice(0, 30).map((l, idx) => `
       <tr>
@@ -4517,6 +4616,7 @@
       checkClientBalance();
     }
 
+    if (balance <= 0) settleCustomAlertsInMemory(name, 999999999);
     document.getElementById('clientModal').style.display = 'none';
     renderAllViews();
     showToast(isEdit ? `✅ تم تعديل بيانات "${name}"` : `✅ تم إضافة العميل "${name}"`);
@@ -4633,6 +4733,7 @@
       supplierLogsList.forEach(x => { if (x.supplier === origName) x.supplier = name; });
       customAlertsList.forEach(x => { if (x.target === origName) x.target = name; });
     }
+    if (balance <= 0) settleCustomAlertsInMemory(name, 999999999);
     document.getElementById('editSupplierModal').style.display = 'none';
     renderAllViews();
     showToast(`✅ تم تعديل بيانات المورد "${name}"`);
@@ -4650,6 +4751,10 @@
   function openEditSupLogModal(id) {
     const l = supplierLogsList.find(x => x.id === id);
     if (!l) return;
+    if (l.kind === 'شراء بضاعة') {
+      loadPurchaseForEdit(id);
+      return;
+    }
     document.getElementById('editSupLogId').value = l.id;
     document.getElementById('editSupLogPaid').value = l.paid || 0;
     document.getElementById('editSupLogDetails').value = l.details || '';
