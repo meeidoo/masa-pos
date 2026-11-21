@@ -1179,7 +1179,7 @@
 <body>
 
   <!-- بوابة الدخول الموحدة بالرقم السري -->
-  <div id="appLoginGate" class="login-gate-overlay" style="display:none;">
+  <div id="appLoginGate" class="login-gate-overlay" style="display:flex;">
     <div class="login-gate-card">
       <div class="login-gate-logo">
         <svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1217,7 +1217,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v3.0</span>
+          <span>ERP Pro v3.2</span>
         </div>
         <button id="lockAdminBtn" class="lock-btn" onclick="lockAdminSession()">🔒 قفل الإدارة</button>
         <span class="conn-badge" id="connBadge">جاري الاتصال...</span>
@@ -2151,7 +2151,7 @@
 
       <div class="no-print-stmt" style="display:flex;gap:7px;flex-wrap:wrap;">
         <button id="stmtShareWaMobileBtn" style="flex:1;min-width:135px;background:#16a34a;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">📲 واتساب موبايل</button>
-        <button id="stmtShareWaDesktopBtn" style="flex:1;min-width:135px;background:#0284c7;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">💻 واتساب كمبيوتر</button>
+        <button id="stmtShareWaDesktopBtn" style="flex:1;min-width:135px;background:#0284c7;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">📋 نسخ للكمبيوتر</button>
         <button onclick="printStatementPDF()" style="flex:1;min-width:135px;background:#0f2922;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">🖨️ طباعة / حفظ PDF</button>
       </div>
     </div>
@@ -2341,20 +2341,35 @@
     pendingSyncCount++;
     updateConnBadge();
     syncQueue = syncQueue.then(async () => {
-      try {
-        const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-        const data = await res.json();
-        if (data.status === 'error') {
-          showToast(data.message, true);
-        } else if (onSuccessRefresh) {
-          await loadAllData(true);
+      let attempt = 0;
+      let synced = false;
+      while (attempt < 2 && !synced) {
+        attempt++;
+        try {
+          const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+          const data = await res.json();
+          if (data.status === 'error') {
+            const errMsg = data.message || "❌ خطأ أثناء الحفظ في جوجل شيت!";
+            showToast(errMsg, true);
+            alert("⚠️ تنبيه مزامنة الخلفية:\n" + errMsg);
+            if (errMsg.includes('الرقم السري')) showLoginGate(errMsg);
+            synced = true;
+          } else {
+            synced = true;
+            if (onSuccessRefresh) await loadAllData(true);
+          }
+        } catch (e) {
+          if (attempt < 2) {
+            showToast("⚠️ تعذر الاتصال بالسيرفر، جاري إعادة المحاولة...", true);
+            await new Promise(r => setTimeout(r, 1200));
+          } else {
+            showToast("⛔ فشل حفظ آخر حركة في جوجل شيت — تحقق من الإنترنت!", true);
+            alert("⛔ فشل الاتصال بجوجل شيت أثناء المزامنة في الخلفية!\nتحقق من الإنترنت وراجع آخر حركة في السجل.");
+          }
         }
-      } catch (e) {
-        showToast("⚠️ تعذر الاتصال بالسيرفر، جاري إعادة المحاولة...", true);
-      } finally {
-        pendingSyncCount = Math.max(0, pendingSyncCount - 1);
-        updateConnBadge();
       }
+      pendingSyncCount = Math.max(0, pendingSyncCount - 1);
+      updateConnBadge();
     });
   }
 
@@ -4044,7 +4059,7 @@
             <button class="btn-sm" style="background:#e0e7ff;color:#1e40af;" title="معاينة PDF وواتساب" onclick="openPrintInvoiceModalByIndex(${idx})">🖨️</button>
             <button class="btn-sm" style="background:#fef3c7;color:#b45309;" title="تعديل" onclick="loadInvoiceForEdit(${idx})">✏️</button>
             <button class="btn-sm" style="background:#dcfce7;color:#166534;" title="واتساب موبايل" onclick="shareOldInvoiceByIndex(${idx}, 'mobile')">📲</button>
-            <button class="btn-sm" style="background:#e0f2fe;color:#0369a1;" title="واتساب كمبيوتر" onclick="shareOldInvoiceByIndex(${idx}, 'desktop')">💻</button>
+            <button class="btn-sm" style="background:#e0f2fe;color:#0369a1;" title="نسخ الفاتورة للكمبيوتر" onclick="shareOldInvoiceByIndex(${idx}, 'desktop')">📋</button>
             <button class="btn-sm" style="background:#fee2e2;color:#dc2626;" title="حذف" onclick="deleteInvoiceById('${inv.id}')">🗑️</button>
           </td>
         </tr>
@@ -4895,6 +4910,37 @@
     }
   }
 
+
+  function copyTextToClipboard(text, successMsg = '✅ تم النسخ بنجاح — اضغط لصق (Ctrl+V) في واتساب') {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(successMsg);
+      }).catch(() => {
+        fallbackCopyText(text, successMsg);
+      });
+    } else {
+      fallbackCopyText(text, successMsg);
+    }
+  }
+
+  function fallbackCopyText(text, successMsg) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showToast(successMsg);
+    } catch (err) {
+      alert('تعذر النسخ التلقائي، يرجى النسخ يدوياً');
+    }
+    document.body.removeChild(ta);
+  }
+
   function sendSubReminderWhatsApp(clientName, username, endDate) {
     const msg = `*ماسا جروب للإلكترونيات* ⚡\nأهلاً بك، نذكركم بقرب انتهاء اشتراك IPTV الخاص بيوزر (*${username}*) بتاريخ *${endDate}*.\nللتجديد تواصل معنا: 01002902102 / 01270919376`;
     openWhatsAppBusiness(clientName, msg);
@@ -5020,16 +5066,20 @@
     };
 
     document.getElementById('stmtShareWaDesktopBtn').onclick = () => {
-      const lines = ledger.slice(0, 15).map(r => `- [${r.date.split(' ')[0]}] ${r.desc} (بضاعة: ${r.goodsAmt.toLocaleString()} ج.م - مدفوع: ${r.paidAmt.toLocaleString()} ج.م)`).join('\n');
-      let waMsg = `كشف حساب تفصيلي - ماسا جروب للإلكترونيات\n`;
-      waMsg += `الاسم: ${entityName}\n`;
+      const lines = ledger.slice(0, 15).map(r => `▪️ [${r.date.split(' ')[0]}] ${r.desc} (بضاعة: ${r.goodsAmt.toLocaleString()} ج.م | مدفوع: ${r.paidAmt.toLocaleString()} ج.م)`).join('\n');
+      let waMsg = `📜 *كشف حساب تفصيلي*\n`;
+      waMsg += `*ماسا جروب للإلكترونيات* ⚡\n`;
+      waMsg += `الاسم: *${entityName}*\n`;
       waMsg += `التاريخ: ${new Date().toISOString().split('T')[0]}\n\n`;
-      waMsg += `إجمالي البضاعة: ${totalGoods.toLocaleString()} ج.م\n`;
-      waMsg += `إجمالي المدفوعات: ${totalPaid.toLocaleString()} ج.م\n`;
-      waMsg += `الرصيد المتبقي الحالي: ${currentRemaining.toLocaleString()} ج.م\n\n`;
-      waMsg += `أحدث الحركات:\n${lines || 'لا توجد حركات'}\n\n`;
-      waMsg += `شرفنا التعامل معكم\nماسا جروب للإلكترونيات\nم. محمد نجاح\n01002902102 - 01270919376\nhttps://masa-vip.com`;
-      openWhatsAppBusiness(entityName, waMsg);
+      waMsg += `📦 إجمالي البضاعة: *${totalGoods.toLocaleString()} ج.م*\n`;
+      waMsg += `💵 إجمالي المدفوعات: *${totalPaid.toLocaleString()} ج.م*\n`;
+      waMsg += `⚠️ *الرصيد المتبقي الحالي:* *${currentRemaining.toLocaleString()} ج.م*\n\n`;
+      waMsg += `*أحدث الحركات:*\n${lines || 'لا توجد حركات'}\n\n`;
+      waMsg += `شرفنا التعامل معكم 🤝\n`;
+      waMsg += `م. محمد نجاح\n`;
+      waMsg += `01002902102 - 01270919376\n`;
+      waMsg += `https://masa-vip.com`;
+      copyTextToClipboard(waMsg, '✅ تم نسخ كشف الحساب — اذهب للعميل واضغط لصق (Ctrl+V)');
     };
 
     document.getElementById('statementModal').style.display = 'flex';
@@ -5046,35 +5096,35 @@
     const dateOnly = inv.date ? String(inv.date).split(' ')[0] : new Date().toISOString().split('T')[0];
 
     if (platform === 'desktop') {
-      const titlePlain = inv.orderType === 'deferred' ? 'أمر شحن / بيع مؤجل - ماسا جروب للإلكترونيات' : 'فاتورة مبيعات - ماسا جروب للإلكترونيات';
+      const titlePlain = inv.orderType === 'deferred' ? '📦 *أمر شحن / بيع مؤجل*' : '🧾 *فاتورة مبيعات*';
       const itemLines = math.regularItems.map(it => {
-        const subInfo = (it.kind === 'service' && it.username) ? ` - يوزر: ${it.username}` : '';
+        const subInfo = (it.kind === 'service' && it.username) ? ` [يوزر: ${it.username}]` : '';
         const lineSum = (Number(it.qty) || 0) * (Number(it.price) || 0);
-        return `- ${it.name}${subInfo} (الكمية: ${it.qty} × ${Number(it.price).toLocaleString()} ج.م) = ${lineSum.toLocaleString()} ج.م`;
+        return `▪️ ${it.name}${subInfo} (${it.qty} × ${Number(it.price).toLocaleString()} ج.م) = *${lineSum.toLocaleString()} ج.م*`;
       }).join('\n');
 
       const discLines = math.discountItems.map(d => {
         const label = d.discountNote ? `خصم (${d.discountNote})` : 'خصم';
-        return `- ${label}: -${d.price.toLocaleString()} ج.م`;
+        return `➖ *${label}:* -${d.price.toLocaleString()} ج.م`;
       }).join('\n');
 
       let text = `${titlePlain}\n`;
-      text += `رقم الفاتورة: ${inv.id}\n`;
+      text += `*ماسا جروب للإلكترونيات* ⚡\n`;
+      text += `رقم الفاتورة: *${inv.id}*\n`;
       text += `التاريخ: ${dateOnly}\n`;
-      text += `العميل: ${inv.clientName}\n\n`;
-      text += `الأصناف:\n${itemLines}\n\n`;
+      text += `العميل: *${inv.clientName}*\n\n`;
+      text += `*تفاصيل الأصناف:*\n${itemLines}\n\n`;
       if (math.totalDiscount > 0) {
-        text += `إجمالي الأصناف: ${math.itemsSubtotal.toLocaleString()} ج.م\n`;
-        text += `الخصم:\n${discLines}\n\n`;
-        text += `الصافي النهائي: ${math.netTotal.toLocaleString()} ج.م\n`;
+        text += `💰 إجمالي الأصناف: ${math.itemsSubtotal.toLocaleString()} ج.م\n`;
+        text += `${discLines}\n`;
+        text += `✅ *الصافي النهائي:* *${math.netTotal.toLocaleString()} ج.م*\n`;
       } else {
-        text += `إجمالي الفاتورة: ${math.netTotal.toLocaleString()} ج.م\n`;
+        text += `💰 *إجمالي الفاتورة:* *${math.netTotal.toLocaleString()} ج.م*\n`;
       }
-      text += `المدفوع الآن: ${Number(inv.paid).toLocaleString()} ج.م\n`;
-      text += `المتبقي من الفاتورة: ${Number(inv.remaining).toLocaleString()} ج.م\n`;
-      text += `إجمالي الرصيد المستحق (القديم + الجديد): ${Number(currentTotalDebt).toLocaleString()} ج.م\n\n`;
-      text += `شرفنا التعامل معكم\n`;
-      text += `ماسا جروب للإلكترونيات\n`;
+      text += `💵 المدفوع الآن: ${Number(inv.paid).toLocaleString()} ج.م\n`;
+      text += `${Number(inv.remaining) > 0 ? '🔴' : '✅'} المتبقي من الفاتورة: *${Number(inv.remaining).toLocaleString()} ج.م*\n`;
+      text += `⚠️ *إجمالي الرصيد المستحق (القديم + الجديد):* *${Number(currentTotalDebt).toLocaleString()} ج.م*\n\n`;
+      text += `شرفنا التعامل معكم 🤝\n`;
       text += `م. محمد نجاح\n`;
       text += `01002902102 - 01270919376\n`;
       text += `https://masa-vip.com`;
@@ -5123,6 +5173,10 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const chosenPlatform = (platform === 'auto') ? (isMobile ? 'mobile' : 'desktop') : platform;
     const msg = buildInvoiceWhatsAppText(inv, chosenPlatform);
+    if (chosenPlatform === 'desktop') {
+      copyTextToClipboard(msg, '✅ تم نسخ الفاتورة — اذهب للعميل واضغط لصق (Ctrl+V)');
+      return;
+    }
     openWhatsAppBusiness(inv.clientName, msg);
   }
 
@@ -5749,7 +5803,7 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     renderInvoiceItems(true);
   }
 
-  async function submitInvoice() {
+  function submitInvoice() {
     if (!isAdminUnlocked || !sessionAdminPin) {
       showLoginGate('🔐 يجب إدخال الرقم السري أولاً قبل اعتماد أي فاتورة');
       return;
@@ -5760,9 +5814,6 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     const zeroItems = invoiceItems.filter(i => (Number(i.price) || 0) <= 0);
     if (zeroItems.length > 0) return alert(`⛔ يوجد بنود بقيمة صفر: ${zeroItems.map(x => x.name).join('، ')}`);
     if (math.netTotal < 0) return alert("⛔ قيمة الخصم أكبر من إجمالي الأصناف!");
-
-    const saveBtn = document.getElementById('submitInvoiceBtn');
-    if (saveBtn.dataset.saving === '1') return;
 
     const clientName = cleanEgyptianPhone(document.getElementById('clientName').value.trim()) || "عميل نقدي";
     const tierMap = { retail: 'قطاعي', technician: 'فني', wholesale: 'جملة' };
@@ -5778,61 +5829,52 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     const editIdSnapshot = editingInvoiceId;
     const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
-    saveBtn.dataset.saving = '1';
-    saveBtn.disabled = true;
-    saveBtn.innerText = "⏳ جاري الحفظ...";
-
-    try {
-      const res = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          type: 'save_invoice', editInvoiceId: editIdSnapshot, pin: sessionAdminPin,
-          clientName, tier: tierLabel, paid, reminderDate, orderType, shippingNote, items: snapshotItems, installments
-        })
+    let savedInvObj = null;
+    if (!editIdSnapshot) {
+      snapshotItems.forEach(it => {
+        if (it.kind !== 'service' && it.kind !== 'discount') {
+          const p = catalog.find(x => x.name === it.name);
+          if (p) p.stock -= Number(it.qty);
+        }
       });
-      const data = await res.json();
-      if (data.status !== 'success') {
-        const errMsg = data.message || "❌ تعذر حفظ الفاتورة في جوجل شيت!";
-        showToast(errMsg, true);
-        alert(`⛔ لم يتم حفظ الفاتورة في جوجل شيت:
-${errMsg}
-
-الفاتورة لا تزال موجودة على الشاشة — يمكنك تصحيح الخطأ أو إعادة المحاولة.`);
-        if (errMsg.includes('الرقم السري')) showLoginGate(errMsg);
-        return;
+      if (clientName !== 'عميل نقدي' && orderType !== 'deferred') {
+        const cli = findClientInMemory(clientName);
+        if (cli) {
+          cli.balance += remaining; cli.lastUpdate = nowStr;
+          if (reminderDate && installments.length === 0) cli.reminderDate = reminderDate;
+          if (cli.balance <= 0) cli.reminderDate = '';
+        } else {
+          clients.unshift({ name: clientName, tier: tierLabel, balance: remaining, behavior: 'متقطع', reminderDate: installments.length === 0 ? reminderDate : '', lastUpdate: nowStr, notes: '', invoiceCount: 1 });
+        }
       }
-
-      const realId = data.invoiceId || editIdSnapshot || 'INV';
-      const canonicalCli = data.canonicalClient || clientName;
-      const existingInv = editIdSnapshot ? oldInvoices.find(x => x.id === editIdSnapshot) : null;
-      const savedInvObj = {
-        id: realId,
-        date: existingInv ? existingInv.date : nowStr,
-        clientName: canonicalCli,
-        tier: tierLabel,
-        total, paid, remaining,
-        items: snapshotItems,
-        reminderDate, orderType, shippingNote
-      };
-
-      clearInvoice();
-      await loadAllData(true);
-      showToast(orderType === 'deferred'
-        ? `📦 تم تأكيد وحفظ الأمر المؤجل (${realId}) في جوجل شيت!`
-        : `✅ تم تأكيد وحفظ الفاتورة (${realId}) في جوجل شيت بنجاح!`);
-
-      setTimeout(() => {
-        openPrintInvoiceModal(savedInvObj);
-      }, 100);
-    } catch (e) {
-      showToast("⚠️ فشل الاتصال بجوجل شيت — لم يتم مسح الفاتورة", true);
-      alert("⚠️ تعذر الاتصال بالسيرفر لحفظ الفاتورة!
-
-الفاتورة لا تزال محفوظة على الشاشة، تأكد من الإنترنت واضغط (اعتماد) مرة أخرى.");
-    } finally {
-      saveBtn.dataset.saving = '0';
-      updateTotals();
+      installments.forEach((inst, idx) => {
+        customAlertsList.unshift({
+          id: 'ALT-NEW', date: inst.date, target: clientName,
+          title: `تحصيل دفعة جملة (${idx + 1} من ${installments.length})`,
+          amount: inst.amount, kind: 'تحصيل جملة', status: 'نشط'
+        });
+      });
+      const tempId = (orderType === 'deferred' ? 'ORD-' : 'INV-') + String(oldInvoices.length + 1).padStart(4, '0');
+      savedInvObj = { id: tempId, date: nowStr, clientName, tier: tierLabel, total, paid, remaining, items: snapshotItems, reminderDate, orderType, shippingNote };
+      oldInvoices.unshift(savedInvObj);
+    } else {
+      const existingInv = oldInvoices.find(x => x.id === editIdSnapshot);
+      savedInvObj = { id: editIdSnapshot, date: existingInv ? existingInv.date : nowStr, clientName, tier: tierLabel, total, paid, remaining, items: snapshotItems, reminderDate, orderType, shippingNote };
+      if (existingInv) Object.assign(existingInv, savedInvObj);
     }
+
+    clearInvoice();
+    renderAllViews();
+    showToast(orderType === 'deferred' ? "📦 تم حفظ أمر الشحن المؤجل فوراً (جاري المزامنة)!" : "✅ تم اعتماد الفاتورة فوراً (جاري المزامنة في الخلفية)!");
+
+    enqueueServerSync({
+      type: 'save_invoice', editInvoiceId: editIdSnapshot, pin: sessionAdminPin,
+      clientName, tier: tierLabel, paid, reminderDate, orderType, shippingNote, items: snapshotItems, installments
+    });
+
+    setTimeout(() => {
+      openPrintInvoiceModal(savedInvObj);
+    }, 100);
   }
 </script>
 
@@ -5848,7 +5890,7 @@ ${errMsg}
 
       <div class="no-print-inv" style="display:flex;gap:7px;flex-wrap:wrap;">
         <button id="invWaMobileBtn" style="flex:1;min-width:140px;background:#16a34a;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">📲 واتساب موبايل</button>
-        <button id="invWaDesktopBtn" style="flex:1;min-width:140px;background:#0284c7;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">💻 واتساب كمبيوتر</button>
+        <button id="invWaDesktopBtn" style="flex:1;min-width:140px;background:#0284c7;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">📋 نسخ للكمبيوتر</button>
         <button onclick="printInvoicePDF()" style="flex:1;min-width:130px;background:#0f2922;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">🖨️ طباعة / PDF</button>
       </div>
     </div>
