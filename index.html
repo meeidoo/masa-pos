@@ -1230,7 +1230,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v5.1</span>
+          <span>ERP Pro v5.2</span>
         </div>
         <button id="lockAdminBtn" class="lock-btn" onclick="lockAdminSession()">🔒 قفل الإدارة</button>
         <span class="conn-badge" id="connBadge">جاري الاتصال...</span>
@@ -4194,6 +4194,11 @@
   function openReceiptByIndex(idx) {
     const p = paymentsList[idx];
     if (!p) return;
+    if (String(p.id || '').startsWith('CLR-')) {
+      const data = reconstructOffsetDataById(p.id, p.clientName, p.amount, p.date, p.note, 'client');
+      openOffsetReceiptModal(data, data.isMutual ? 'mutual' : 'client');
+      return;
+    }
     const cli = findClientInMemory(p.clientName);
     const bal = (p.balanceAfter !== undefined && p.balanceAfter !== '') ? Number(p.balanceAfter) : (cli ? cli.balance : 0);
     openPrintReceiptModal({ kind: 'client', id: p.id, date: p.date, partyName: p.clientName, amount: p.amount, balanceAfter: bal, note: p.note || '' });
@@ -4202,6 +4207,13 @@
   function shareReceiptByIndex(idx, platform = 'mobile') {
     const p = paymentsList[idx];
     if (!p) return;
+    if (String(p.id || '').startsWith('CLR-')) {
+      const data = reconstructOffsetDataById(p.id, p.clientName, p.amount, p.date, p.note, 'client');
+      const msg = buildOffsetWhatsAppText(data, data.isMutual ? 'mutual' : 'client', platform);
+      if (platform === 'desktop') copyTextToClipboard(msg, '✅ تم نسخ سند المقاصة — اضغط لصق (Ctrl+V) في واتساب');
+      else openWhatsAppBusiness(p.clientName, msg);
+      return;
+    }
     const cli = findClientInMemory(p.clientName);
     const bal = (p.balanceAfter !== undefined && p.balanceAfter !== '') ? Number(p.balanceAfter) : (cli ? cli.balance : 0);
     shareReceiptWhatsApp(p.clientName, p.amount, bal, p.id, p.date || '', platform, 'client', p.note || '');
@@ -4242,6 +4254,11 @@
   function openSupplierReceiptByIndex(idx) {
     const l = supplierLogsList[idx];
     if (!l) return;
+    if (String(l.id || '').startsWith('CLR-')) {
+      const data = reconstructOffsetDataById(l.id, l.supplier, l.paid, l.date, l.details, 'supplier');
+      openOffsetReceiptModal(data, data.isMutual ? 'mutual' : 'supplier');
+      return;
+    }
     const sup = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(l.supplier));
     const bal = sup ? sup.balance : 0;
     openPrintReceiptModal({ kind: 'supplier', id: l.id, date: l.date, partyName: l.supplier, amount: Number(l.paid) || 0, balanceAfter: bal, note: l.details || l.kind });
@@ -6965,6 +6982,236 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     }
   }
 
+  function buildOffsetWhatsAppText(data, viewMode = 'mutual', platform = 'mobile') {
+    const dateOnly = data.date ? String(data.date).split(' ')[0] : new Date().toISOString().split('T')[0];
+    const amt = Number(data.amount) || 0;
+    const cliBefore = Number(data.cliBalBefore) || 0;
+    const cliAfter = Number(data.cliBalAfter) || 0;
+    const supBefore = Number(data.supBalBefore) || 0;
+    const supAfter = Number(data.supBalAfter) || 0;
+
+    if (data.isMutual || viewMode === 'mutual') {
+      const netDiff = cliAfter - supAfter;
+      let statusLine = '';
+      let docTitle = 'سند تصفية ومقاصة حساب';
+      if (netDiff > 0) {
+        docTitle = 'سند تصفية ومقاصة حساب (مديونية مستحقة)';
+        statusLine = `🔴 *الصافي المستحق عليه الآن:* *${netDiff.toLocaleString()} ج.م*`;
+      } else if (netDiff < 0) {
+        docTitle = 'سند تصفية ومقاصة حساب (مستحق سداد)';
+        statusLine = `🔵 *الصافي المستحق له الآن (واجب السداد):* *${Math.abs(netDiff).toLocaleString()} ج.م*`;
+      } else {
+        docTitle = 'سند تصفية ومقاصة حساب (خالص)';
+        statusLine = `✅ *الحساب خالص ومتعادل الآن:* *0 ج.م*`;
+      }
+
+      if (platform === 'desktop') {
+        let text = `⚖️ *${docTitle}*\n`;
+        text += `*ماسا جروب للإلكترونيات* ⚡\n`;
+        text += `رقم السند: *${data.id}*\n`;
+        text += `التاريخ: ${dateOnly}\n`;
+        text += `التاجر: *${data.clientName}*\n\n`;
+        text += `📤 إجمالي ما عليه قبل التصفية (مبيعات): *${cliBefore.toLocaleString()} ج.م*\n`;
+        text += `📥 إجمالي ما له قبل التصفية (مشتريات): *${supBefore.toLocaleString()} ج.م*\n`;
+        text += `⚖️ قيمة المقاصة (شطب متبادل): *${amt.toLocaleString()} ج.م*\n`;
+        if (data.note) text += `📝 ملاحظات: ${data.note}\n`;
+        text += `${statusLine}\n\n`;
+        text += `شرفنا التعامل معكم 🤝\n`;
+        text += `م. محمد نجاح\n`;
+        text += `01002902102 - 01270919376\n`;
+        text += `https://masa-vip.com`;
+        return text;
+      }
+
+      return `⚖️ *${docTitle}* | *ماسا جروب للإلكترونيات* ⚡
+👤 *التاجر:* ${data.clientName}
+📅 *التاريخ:* ${dateOnly}
+🔖 *رقم السند:* ${data.id}
+
+📤 *ما عليه قبل التصفية:* ${cliBefore.toLocaleString()} ج.م
+📥 *ما له قبل التصفية:* ${supBefore.toLocaleString()} ج.م
+⚖️ *قيمة المقاصة (شطب متبادل):* *${amt.toLocaleString()} ج.م*${data.note ? `\n📝 *ملاحظات:* ${data.note}` : ''}
+${statusLine}
+
+شرفنا التعامل معكم 🤝
+م. محمد نجاح | 01002902102 - 01270919376
+🌐 masa-vip.com`;
+    }
+
+    if (viewMode === 'supplier') {
+      const balLine = supAfter > 0
+        ? `🔵 *الرصيد المتبقي للمورد بعد السداد:* *${supAfter.toLocaleString()} ج.م*`
+        : (supAfter < 0 ? `🟢 *رصيد زائد للمورد:* *${Math.abs(supAfter).toLocaleString()} ج.م*` : `✅ *حساب المورد خالص الآن:* *0 ج.م*`);
+      const bodyNote = `تحويل مباشر من العميل (${data.clientName})` + (data.note ? ` - ${data.note}` : '');
+      if (platform === 'desktop') {
+        return `💸 *سند سداد لمورد (تحويل مباشر)*\n*ماسا جروب للإلكترونيات* ⚡\nرقم السند: *${data.id}*\nالتاريخ: ${dateOnly}\nالمورد: *${data.supplierName}*\n\n💵 قيمة التحويل المسدد: *${amt.toLocaleString()} ج.م*\n📝 البيان: ${bodyNote}\n${balLine}\n\nشرفنا التعامل معكم 🤝\nم. محمد نجاح\n01002902102 - 01270919376\nhttps://masa-vip.com`;
+      }
+      return `💸 *سند سداد لمورد (تحويل مباشر)* | *ماسا جروب للإلكترونيات* ⚡\n🏭 *المورد:* ${data.supplierName}\n📅 *التاريخ:* ${dateOnly}\n🔖 *رقم السند:* ${data.id}\n\n💵 *قيمة التحويل المسدد:* *${amt.toLocaleString()} ج.م*\n📝 *البيان:* ${bodyNote}\n${balLine}\n\nشرفنا التعامل معكم 🤝\nم. محمد نجاح | 01002902102 - 01270919376\n🌐 masa-vip.com`;
+    }
+
+    // Default: Two-party client receipt
+    const balLineCli = cliAfter > 0
+      ? `🔴 *الرصيد المتبقي على العميل بعد التحويل:* *${cliAfter.toLocaleString()} ج.م*`
+      : (cliAfter < 0 ? `🟢 *رصيد له مقدم:* *${Math.abs(cliAfter).toLocaleString()} ج.م*` : `✅ *حساب العميل خالص الآن:* *0 ج.م*`);
+    const bodyNoteCli = `تحويل مباشر للمورد (${data.supplierName})` + (data.note ? ` - ${data.note}` : '');
+    if (platform === 'desktop') {
+      return `✅ *سند تحصيل (تحويل مباشر)*\n*ماسا جروب للإلكترونيات* ⚡\nرقم السند: *${data.id}*\nالتاريخ: ${dateOnly}\nالعميل: *${data.clientName}*\n\n💵 قيمة التحويل: *${amt.toLocaleString()} ج.م*\n📝 البيان: ${bodyNoteCli}\n${balLineCli}\n\nشرفنا التعامل معكم 🤝\nم. محمد نجاح\n01002902102 - 01270919376\nhttps://masa-vip.com`;
+    }
+    return `✅ *سند تحصيل (تحويل مباشر)* | *ماسا جروب للإلكترونيات* ⚡\n👤 *العميل:* ${data.clientName}\n📅 *التاريخ:* ${dateOnly}\n🔖 *رقم السند:* ${data.id}\n\n💵 *قيمة التحويل:* *${amt.toLocaleString()} ج.م*\n📝 *البيان:* ${bodyNoteCli}\n${balLineCli}\n\nشرفنا التعامل معكم 🤝\nم. محمد نجاح | 01002902102 - 01270919376\n🌐 masa-vip.com`;
+  }
+
+  let _lastOffsetReceiptData = null;
+
+  function openOffsetReceiptModal(data, viewMode = 'auto') {
+    _lastOffsetReceiptData = data;
+    const activeView = data.isMutual ? 'mutual' : (viewMode === 'supplier' ? 'supplier' : 'client');
+    const dateOnly = data.date ? String(data.date).split(' ')[0] : new Date().toISOString().split('T')[0];
+    const amt = Number(data.amount) || 0;
+    const cliBefore = Number(data.cliBalBefore) || 0;
+    const cliAfter = Number(data.cliBalAfter) || 0;
+    const supBefore = Number(data.supBalBefore) || 0;
+    const supAfter = Number(data.supBalAfter) || 0;
+
+    document.querySelector('#printInvoiceModal .no-print-inv div').innerText = data.isMutual
+      ? '⚖️ معاينة سند تصفية ومقاصة حساب — طباعة / إرسال'
+      : '🔄 معاينة سند التحويل المباشر (عميل ⇄ مورد) — طباعة / إرسال';
+
+    if (activeView === 'mutual') {
+      const netDiff = cliAfter - supAfter;
+      let docTitle = 'سند تصفية ومقاصة حساب';
+      let verdictBg = '#0f2922', verdictColor = '#4ade80', verdictText = '✅ الحساب خالص ومتعادل الآن: 0 ج.م';
+      if (netDiff > 0) {
+        docTitle = 'سند تصفية ومقاصة حساب (مديونية مستحقة)';
+        verdictBg = '#7f1d1d'; verdictColor = '#fde68a';
+        verdictText = `🔴 الصافي المستحق عليه الآن: ${netDiff.toLocaleString()} ج.م`;
+      } else if (netDiff < 0) {
+        docTitle = 'سند تصفية ومقاصة حساب (مستحق سداد)';
+        verdictBg = '#1e3a8a'; verdictColor = '#93c5fd';
+        verdictText = `🔵 الصافي المستحق له الآن (واجب السداد): ${Math.abs(netDiff).toLocaleString()} ج.م`;
+      }
+
+      document.getElementById('printInvoiceBody').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #ea580c;padding-bottom:8px;margin-bottom:12px;">
+          <div>
+            <div style="font-size:17px;font-weight:900;color:#0f2922;">⚡ ماسا جروب للإلكترونيات</div>
+            <div style="font-size:11px;color:#475569;font-weight:700;">رسيفرات • كاميرات مراقبة • اشتراكات IPTV</div>
+          </div>
+          <div style="text-align:left;font-size:11.5px;">
+            <div style="font-weight:900;color:#ea580c;">${docTitle}</div>
+            <div>رقم السند: <strong>${data.id}</strong></div>
+            <div>التاريخ: <strong>${dateOnly}</strong></div>
+          </div>
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:13px;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;justify-content:space-between;"><span>التاجر:</span><strong>${data.clientName}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span>📤 إجمالي ما عليه قبل التصفية (مبيعات):</span><strong style="color:#dc2626;">${cliBefore.toLocaleString()} ج.م</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span>📥 إجمالي ما له قبل التصفية (مشتريات):</span><strong style="color:#0284c7;">${supBefore.toLocaleString()} ج.م</strong></div>
+          ${data.note ? `<div style="display:flex;justify-content:space-between;"><span>ملاحظات:</span><strong>${data.note}</strong></div>` : ''}
+        </div>
+
+        <div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:10px;padding:11px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13.5px;font-weight:800;color:#9a3412;">⚖️ قيمة المقاصة (شطب متبادل):</span>
+          <strong style="font-size:18px;font-weight:900;color:#ea580c;">${amt.toLocaleString()} ج.م</strong>
+        </div>
+
+        <div style="background:${verdictBg};color:#fff;padding:11px 12px;border-radius:9px;text-align:center;font-size:14.5px;font-weight:900;color:${verdictColor};">
+          ${verdictText}
+        </div>
+
+        <div style="text-align:center;font-size:11px;color:#475569;margin-top:12px;border-top:1px solid #e2e8f0;padding-top:6px;">
+          شرفنا التعامل معكم 🤝 | م. محمد نجاح: 01002902102 - 01270919376 | masa-vip.com
+        </div>
+      `;
+
+      document.getElementById('invWaMobileBtn').onclick = () => openWhatsAppBusiness(data.clientName, buildOffsetWhatsAppText(data, 'mutual', 'mobile'));
+      document.getElementById('invWaDesktopBtn').onclick = () => copyTextToClipboard(buildOffsetWhatsAppText(data, 'mutual', 'desktop'), '✅ تم نسخ سند التصفية والمقاصة — اضغط لصق (Ctrl+V) في واتساب');
+      document.getElementById('printInvoiceModal').style.display = 'flex';
+      return;
+    }
+
+    // Two-party direct transfer (switcher for Client Receipt vs Supplier Payment Receipt)
+    const isSup = activeView === 'supplier';
+    const partyName = isSup ? data.supplierName : data.clientName;
+    const partyLabel = isSup ? 'المورد' : 'العميل';
+    const docTitle = isSup ? 'سند سداد لمورد (تحويل مباشر)' : 'سند تحصيل (تحويل مباشر)';
+    const accentCol = isSup ? '#0284c7' : '#059669';
+    const balAfter = isSup ? supAfter : cliAfter;
+    const balLabel = isSup ? 'الرصيد المتبقي للمورد بعد السداد' : 'الرصيد المتبقي على العميل بعد التحويل';
+    const descLine = isSup
+      ? `تحويل مباشر من العميل (${data.clientName})` + (data.note ? ` - ${data.note}` : '')
+      : `تحويل مباشر للمورد (${data.supplierName})` + (data.note ? ` - ${data.note}` : '');
+
+    document.getElementById('printInvoiceBody').innerHTML = `
+      <div class="no-print-inv toggle-pair" style="margin-bottom:10px;">
+        <button type="button" class="${!isSup ? 'active-pair' : ''}" onclick="openOffsetReceiptModal(_lastOffsetReceiptData, 'client')">👤 سند العميل (${data.clientName})</button>
+        <button type="button" class="${isSup ? 'active-pair' : ''}" onclick="openOffsetReceiptModal(_lastOffsetReceiptData, 'supplier')">🏭 سند المورد (${data.supplierName})</button>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid ${accentCol};padding-bottom:8px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:17px;font-weight:900;color:#0f2922;">⚡ ماسا جروب للإلكترونيات</div>
+          <div style="font-size:11px;color:#475569;font-weight:700;">رسيفرات • كاميرات مراقبة • اشتراكات IPTV</div>
+        </div>
+        <div style="text-align:left;font-size:11.5px;">
+          <div style="font-weight:900;color:${accentCol};">${docTitle}</div>
+          <div>رقم السند: <strong>${data.id}</strong></div>
+          <div>التاريخ: <strong>${dateOnly}</strong></div>
+        </div>
+      </div>
+
+      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:13px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;justify-content:space-between;"><span>${partyLabel}:</span><strong>${partyName}</strong></div>
+        <div style="display:flex;justify-content:space-between;"><span>البيان:</span><strong>${descLine}</strong></div>
+      </div>
+
+      <div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:14px;font-weight:800;color:#065f46;">💵 قيمة التحويل:</span>
+        <strong style="font-size:19px;font-weight:900;color:#059669;">${amt.toLocaleString()} ج.م</strong>
+      </div>
+
+      <div style="background:#0f2922;color:#fff;padding:10px 12px;border-radius:9px;display:flex;justify-content:space-between;align-items:center;font-size:13.5px;">
+        <span>${balLabel}:</span>
+        <strong style="color:#fbbf24;font-size:16px;">${balAfter.toLocaleString()} ج.م</strong>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:#475569;margin-top:12px;border-top:1px solid #e2e8f0;padding-top:6px;">
+        شرفنا التعامل معكم 🤝 | م. محمد نجاح: 01002902102 - 01270919376 | masa-vip.com
+      </div>
+    `;
+
+    document.getElementById('invWaMobileBtn').onclick = () => openWhatsAppBusiness(partyName, buildOffsetWhatsAppText(data, activeView, 'mobile'));
+    document.getElementById('invWaDesktopBtn').onclick = () => copyTextToClipboard(buildOffsetWhatsAppText(data, activeView, 'desktop'), '✅ تم نسخ السند — اضغط لصق (Ctrl+V) في واتساب');
+    document.getElementById('printInvoiceModal').style.display = 'flex';
+  }
+
+  function reconstructOffsetDataById(clrId, fallbackParty, fallbackAmount, fallbackDate, fallbackNote, clickedKind = 'client') {
+    const payRec = paymentsList.find(p => p.id === clrId);
+    const supRec = supplierLogsList.find(l => l.id === clrId);
+    const clientName = payRec ? payRec.clientName : (clickedKind === 'client' ? fallbackParty : '');
+    const supplierName = supRec ? supRec.supplier : (clickedKind === 'supplier' ? fallbackParty : clientName);
+    const amount = Number(payRec ? payRec.amount : (supRec ? supRec.paid : fallbackAmount)) || 0;
+    const date = (payRec && payRec.date) || (supRec && supRec.date) || fallbackDate || '';
+    const isMutual = Boolean(clientName && supplierName && isSameEntityTarget(clientName, supplierName));
+    const cli = findClientInMemory(clientName);
+    const sup = suppliersList.find(s => isSameEntityTarget(s.name, supplierName));
+    const cliBalAfter = (payRec && payRec.balanceAfter !== undefined && payRec.balanceAfter !== '') ? Number(payRec.balanceAfter) : (cli ? Number(cli.balance) : 0);
+    const supBalAfter = sup ? Number(sup.balance) : 0;
+    const rawNote = String((payRec && payRec.note) || (supRec && supRec.details) || fallbackNote || '');
+    const cleanNote = rawNote.replace(/^⚖️[^-]*(?:-\s*)?/, '').trim();
+    return {
+      id: clrId, date, isMutual,
+      clientName: clientName || supplierName,
+      supplierName: supplierName || clientName,
+      amount,
+      cliBalBefore: cliBalAfter + amount,
+      cliBalAfter,
+      supBalBefore: supBalAfter + amount,
+      supBalAfter,
+      note: cleanNote
+    };
+  }
+
   function submitOffsetNetting() {
     const clientName = document.getElementById('offsetClientSelect').value;
     const supplierName = document.getElementById('offsetSupplierSelect').value;
@@ -6976,29 +7223,32 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
 
     const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
     const clrId = 'CLR-' + String(paymentsList.length + 1).padStart(4, '0');
+    const isMutual = isSameEntityTarget(clientName, supplierName);
 
     // 1. تحديث رصيد العميل وفواتيره وسنداته
     const cli = findClientInMemory(clientName);
-    let cliBalAfter = -amount;
+    const cliBalBefore = cli ? (Number(cli.balance) || 0) : 0;
+    let cliBalAfter = cliBalBefore - amount;
     if (cli) {
       cli.balance -= amount;
       cli.lastUpdate = nowStr;
       if (cli.balance <= 0) cli.reminderDate = '';
       cliBalAfter = cli.balance;
     }
-    const cliNote = `⚖️ مقاصة / تحويل مباشر للمورد (${supplierName})` + (note ? ` - ${note}` : '');
+    const cliNote = (isMutual ? `⚖️ تصفية ومقاصة حساب متبادل` : `⚖️ تحويل مباشر للمورد (${supplierName})`) + (note ? ` - ${note}` : '');
     paymentsList.unshift({ id: clrId, date: nowStr, clientName, amount, balanceAfter: cliBalAfter, note: cliNote });
     applyClientPaymentToInvoices(clientName, amount);
 
     // 2. تحديث رصيد المورد وفواتيره وسجلاته
     const sup = suppliersList.find(s => isSameEntityTarget(s.name, supplierName));
-    let supBalAfter = -amount;
+    const supBalBefore = sup ? (Number(sup.balance) || 0) : 0;
+    let supBalAfter = supBalBefore - amount;
     if (sup) {
       sup.balance -= amount;
       sup.lastUpdate = nowStr;
       supBalAfter = sup.balance;
     }
-    const supNote = `⚖️ مقاصة / سداد بتحويل من العميل (${clientName})` + (note ? ` - ${note}` : '');
+    const supNote = (isMutual ? `⚖️ تصفية ومقاصة حساب متبادل` : `⚖️ سداد بتحويل من العميل (${clientName})`) + (note ? ` - ${note}` : '');
     supplierLogsList.unshift({ id: clrId, date: nowStr, supplier: supplierName, kind: 'سداد مقاصة', total: 0, paid: amount, remaining: -amount, details: supNote });
     applySupplierPaymentToInvoices(supplierName, amount);
 
@@ -7016,11 +7266,11 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     });
 
     setTimeout(() => {
-      openPrintReceiptModal({
-        kind: 'client', id: clrId, date: nowStr,
-        partyName: clientName, amount, balanceAfter: cliBalAfter,
-        note: cliNote
-      });
+      openOffsetReceiptModal({
+        id: clrId, date: nowStr, isMutual,
+        clientName, supplierName, amount,
+        cliBalBefore, cliBalAfter, supBalBefore, supBalAfter, note
+      }, isMutual ? 'mutual' : 'client');
     }, 120);
   }
 
