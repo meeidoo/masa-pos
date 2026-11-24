@@ -1230,7 +1230,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v5.0</span>
+          <span>ERP Pro v5.1</span>
         </div>
         <button id="lockAdminBtn" class="lock-btn" onclick="lockAdminSession()">🔒 قفل الإدارة</button>
         <span class="conn-badge" id="connBadge">جاري الاتصال...</span>
@@ -1319,6 +1319,7 @@
             <button id="wholesaleInstToggleBtn" class="rem-chip" style="background:#0284c7;" onclick="toggleWholesaleInstallments()">📅 تقسيم دفعات</button>
             <button class="rem-chip" style="background:#7c3aed;color:#fff;" onclick="saveCurrentAsQuotation()" title="حفظ الفاتورة الحالية كعرض أسعار بدون خصم مخزن أو حساب">📋 حفظ كعرض سعر</button>
             <button class="rem-chip" style="background:#0d9488;color:#fff;" onclick="openBrokerageModal()" title="شراء من مورد وبيع لعميل أو لحساب الغير">🤝 وساطة / لحساب الغير</button>
+            <button class="rem-chip" style="background:#ea580c;color:#fff;" onclick="openOffsetModal()" title="مقاصة بين عميل ومورد أو تحويل مباشر">⚖️ مقاصة / تصفية</button>
           </div>
 
           <div id="quoteModeBanner" class="edit-banner" style="background:#e0f2fe;color:#0369a1;margin-top:6px;"></div>
@@ -1444,6 +1445,9 @@
           </button>
           <button onclick="openUnifiedPayCollectModal('client', '', '')" style="background:var(--success);color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             💵 تحصيل / سداد
+          </button>
+          <button onclick="openOffsetModal()" style="background:#ea580c;color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
+            ⚖️ مقاصة / تحويل
           </button>
           <button onclick="exportClientsCSV()" style="background:#334155;color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             📊 Excel
@@ -1627,6 +1631,9 @@
           </button>
           <button onclick="openSupplierSessionModal('')" style="background:#f59e0b;color:#0f172a;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             📅 جلسة مورد يومية
+          </button>
+          <button onclick="openOffsetModal()" style="background:#ea580c;color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
+            ⚖️ مقاصة / تحويل
           </button>
         </div>
       </div>
@@ -3328,13 +3335,31 @@
     const dd = document.getElementById('purSupplierDropdown');
     const q = normalizeArabic(document.getElementById('purSupplierName').value);
     const matches = suppliersList.filter(s => !q || normalizeArabic(s.name).includes(q)).slice(0, 12);
-    dd.innerHTML = matches.map(s => `
+    const cliMatches = clients.filter(c => (!q || normalizeArabic(c.name).includes(q)) && !matches.some(s => isSameEntityTarget(s.name, c.name))).slice(0, 8);
+    let out = matches.map(s => {
+      const alsoCli = clients.find(c => isSameEntityTarget(c.name, s.name));
+      return `
       <div class="client-dd-item" onclick="selectPurSupplier('${s.name.replace(/'/g, "\\'")}')">
-        <span style="font-weight:800;">🏭 ${s.name}</span>
+        <div>
+          <span style="font-weight:800;">🏭 ${s.name}</span>
+          ${alsoCli ? `<div style="font-size:10px;color:#0369a1;">🤝 تاجر متبادل | عليه كعميل: ${alsoCli.balance.toLocaleString()} ج.م</div>` : ''}
+        </div>
         <span style="font-weight:900;color:${s.balance > 0 ? '#dc2626' : '#16a34a'};">${s.balance.toLocaleString()} ج.م</span>
-      </div>
-    `).join('');
-    dd.style.display = matches.length > 0 ? 'block' : 'none';
+      </div>`;
+    }).join('');
+    if (cliMatches.length > 0) {
+      out += cliMatches.map(c => `
+        <div class="client-dd-item" style="background:#f0f9ff;" onclick="selectPurSupplier('${c.name.replace(/'/g, "\\'")}')">
+          <div>
+            <div style="font-weight:800;">👤 ${c.name}</div>
+            <div style="font-size:10px;color:#0369a1;">عميل مسجل (اختره للشراء منه وفتح حساب متبادل)</div>
+          </div>
+          <span style="font-weight:900;color:#dc2626;">عليه: ${c.balance.toLocaleString()} ج.م</span>
+        </div>
+      `).join('');
+    }
+    dd.innerHTML = out;
+    dd.style.display = out ? 'block' : 'none';
   }
 
   function selectPurSupplier(name) {
@@ -4520,16 +4545,31 @@
     const dd = document.getElementById('clientDropdown');
     const q = normalizeArabic(document.getElementById('clientName').value);
     const matches = clients.filter(c => !q || normalizeArabic(c.name).includes(q)).sort((a, b) => (b.invoiceCount || 0) - (a.invoiceCount || 0)).slice(0, 15);
+    const supMatches = suppliersList.filter(s => (!q || normalizeArabic(s.name).includes(q)) && !matches.some(c => isSameEntityTarget(c.name, s.name))).slice(0, 8);
 
-    let html = matches.map(c => `
+    let html = matches.map(c => {
+      const alsoSup = suppliersList.find(s => isSameEntityTarget(s.name, c.name));
+      return `
       <div class="client-dd-item" onclick="selectClientFromDropdown('${c.name.replace(/'/g, "\\'")}')">
         <div>
-          <div style="font-weight:800;">${c.name}</div>
-          <div style="font-size:10px;color:#64748b;">${c.tier} • ${c.behavior}</div>
+          <div style="font-weight:800;">👤 ${c.name} ${alsoSup ? '<span style="font-size:9.5px;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:6px;">🤝 تاجر متبادل</span>' : ''}</div>
+          <div style="font-size:10px;color:#64748b;">${c.tier} • ${c.behavior}${alsoSup ? ' | له كمورد: ' + alsoSup.balance.toLocaleString() : ''}</div>
         </div>
         <div style="font-weight:900;color:${c.balance > 0 ? '#dc2626' : '#16a34a'};">${c.balance.toLocaleString()} ج.م</div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
+
+    if (supMatches.length > 0) {
+      html += supMatches.map(s => `
+        <div class="client-dd-item" style="background:#fffbeb;" onclick="selectClientFromDropdown('${s.name.replace(/'/g, "\\'")}')">
+          <div>
+            <div style="font-weight:800;">🏭 ${s.name}</div>
+            <div style="font-size:10px;color:#b45309;">مورد مسجل (اختره للبيع له وفتح حساب متبادل)</div>
+          </div>
+          <div style="font-weight:900;color:#0369a1;">له: ${s.balance.toLocaleString()} ج.م</div>
+        </div>
+      `).join('');
+    }
 
     const rawVal = document.getElementById('clientName').value.trim();
     if (rawVal && !findClientInMemory(rawVal)) {
@@ -6834,6 +6874,156 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     else openWhatsAppBusiness(supName, msg);
   }
 
+
+  // ============================================================================
+  // 4. نظام المقاصة والتصفية والتحويل المباشر بين عميل ومورد (5-Way Sync)
+  // ============================================================================
+  function openOffsetModal(prefillClient = '', prefillSupplier = '') {
+    ensureAdminUnlockedThenRun('أدخل الرقم السري لفتح شاشة المقاصة والتصفية', () => {
+      const cliSel = document.getElementById('offsetClientSelect');
+      const supSel = document.getElementById('offsetSupplierSelect');
+
+      cliSel.innerHTML = `<option value="">-- اختر العميل --</option>` + clients.map(c =>
+        `<option value="${c.name.replace(/"/g, '&quot;')}">${c.name} (${c.balance.toLocaleString()} ج.م)</option>`
+      ).join('');
+      supSel.innerHTML = `<option value="">-- اختر المورد --</option>` + suppliersList.map(s =>
+        `<option value="${s.name.replace(/"/g, '&quot;')}">${s.name} (${s.balance.toLocaleString()} ج.م)</option>`
+      ).join('');
+
+      const mutuals = [];
+      clients.forEach(c => {
+        const s = suppliersList.find(x => isSameEntityTarget(x.name, c.name));
+        if (s) mutuals.push({ cli: c, sup: s });
+      });
+      const chipsWrap = document.getElementById('offsetMutualChipsWrap');
+      const chipsEl = document.getElementById('offsetMutualChips');
+      if (mutuals.length > 0) {
+        chipsWrap.style.display = 'block';
+        chipsEl.innerHTML = mutuals.map(m => `
+          <button type="button" class="btn-sm" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;"
+            onclick="selectMutualOffset('${m.cli.name.replace(/'/g, "\\'")}', '${m.sup.name.replace(/'/g, "\\'")}')">
+            🤝 ${m.cli.name} (له: ${m.sup.balance.toLocaleString()} | عليه: ${m.cli.balance.toLocaleString()})
+          </button>
+        `).join('');
+      } else {
+        chipsWrap.style.display = 'none';
+      }
+
+      document.getElementById('offsetAmountInput').value = '';
+      document.getElementById('offsetNoteInput').value = '';
+      if (prefillClient) cliSel.value = prefillClient;
+      if (prefillSupplier) supSel.value = prefillSupplier;
+      if (!prefillClient && !prefillSupplier && mutuals.length === 1) {
+        cliSel.value = mutuals[0].cli.name;
+        supSel.value = mutuals[0].sup.name;
+        fillSuggestedOffsetAmt();
+      }
+      updateOffsetPreview();
+      document.getElementById('offsetModal').style.display = 'flex';
+    });
+  }
+
+  function selectMutualOffset(cliName, supName) {
+    document.getElementById('offsetClientSelect').value = cliName;
+    document.getElementById('offsetSupplierSelect').value = supName;
+    fillSuggestedOffsetAmt();
+    updateOffsetPreview();
+  }
+
+  function fillSuggestedOffsetAmt() {
+    const cli = clients.find(c => c.name === document.getElementById('offsetClientSelect').value);
+    const sup = suppliersList.find(s => s.name === document.getElementById('offsetSupplierSelect').value);
+    const cBal = cli ? (Number(cli.balance) || 0) : 0;
+    const sBal = sup ? (Number(sup.balance) || 0) : 0;
+    const suggested = (cBal > 0 && sBal > 0) ? Math.min(cBal, sBal) : Math.max(0, cBal, sBal);
+    if (suggested > 0) document.getElementById('offsetAmountInput').value = suggested;
+    updateOffsetPreview();
+  }
+
+  function updateOffsetPreview() {
+    const cli = clients.find(c => c.name === document.getElementById('offsetClientSelect').value);
+    const sup = suppliersList.find(s => s.name === document.getElementById('offsetSupplierSelect').value);
+    const cBal = cli ? (Number(cli.balance) || 0) : 0;
+    const sBal = sup ? (Number(sup.balance) || 0) : 0;
+    const amt = Number(document.getElementById('offsetAmountInput').value) || 0;
+
+    document.getElementById('offsetCliCurBal').innerText = `${cBal.toLocaleString()} ج.م`;
+    document.getElementById('offsetSupCurBal').innerText = `${sBal.toLocaleString()} ج.م`;
+    document.getElementById('offsetCliAfterBal').innerText = `${(cBal - amt).toLocaleString()} ج.م`;
+    document.getElementById('offsetSupAfterBal').innerText = `${(sBal - amt).toLocaleString()} ج.م`;
+
+    const verdictEl = document.getElementById('offsetNetVerdict');
+    if (cli && sup && isSameEntityTarget(cli.name, sup.name)) {
+      const diff = cBal - sBal;
+      if (diff > 0) verdictEl.innerText = `🟢 صافي التاجر المتبادل: ليك عنده فرق ${diff.toLocaleString()} ج.م`;
+      else if (diff < 0) verdictEl.innerText = `🔴 صافي التاجر المتبادل: ليه عندك فرق ${Math.abs(diff).toLocaleString()} ج.م`;
+      else verdictEl.innerText = `✅ الحسابان متعادلان تماماً (صافي 0 ج.م)`;
+    } else if (cli && sup) {
+      verdictEl.innerText = `🔄 تحويل مباشر من العميل (${cli.name}) إلى المورد (${sup.name})`;
+    } else {
+      verdictEl.innerText = `اختر العميل والمورد لحساب الصافي`;
+    }
+  }
+
+  function submitOffsetNetting() {
+    const clientName = document.getElementById('offsetClientSelect').value;
+    const supplierName = document.getElementById('offsetSupplierSelect').value;
+    const amount = Number(document.getElementById('offsetAmountInput').value) || 0;
+    const note = document.getElementById('offsetNoteInput').value.trim();
+
+    if (!clientName || !supplierName) return alert('اختر العميل والمورد أولاً');
+    if (amount <= 0) return alert('اكتب مبلغ المقاصة / التحويل الصحيح');
+
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const clrId = 'CLR-' + String(paymentsList.length + 1).padStart(4, '0');
+
+    // 1. تحديث رصيد العميل وفواتيره وسنداته
+    const cli = findClientInMemory(clientName);
+    let cliBalAfter = -amount;
+    if (cli) {
+      cli.balance -= amount;
+      cli.lastUpdate = nowStr;
+      if (cli.balance <= 0) cli.reminderDate = '';
+      cliBalAfter = cli.balance;
+    }
+    const cliNote = `⚖️ مقاصة / تحويل مباشر للمورد (${supplierName})` + (note ? ` - ${note}` : '');
+    paymentsList.unshift({ id: clrId, date: nowStr, clientName, amount, balanceAfter: cliBalAfter, note: cliNote });
+    applyClientPaymentToInvoices(clientName, amount);
+
+    // 2. تحديث رصيد المورد وفواتيره وسجلاته
+    const sup = suppliersList.find(s => isSameEntityTarget(s.name, supplierName));
+    let supBalAfter = -amount;
+    if (sup) {
+      sup.balance -= amount;
+      sup.lastUpdate = nowStr;
+      supBalAfter = sup.balance;
+    }
+    const supNote = `⚖️ مقاصة / سداد بتحويل من العميل (${clientName})` + (note ? ` - ${note}` : '');
+    supplierLogsList.unshift({ id: clrId, date: nowStr, supplier: supplierName, kind: 'سداد مقاصة', total: 0, paid: amount, remaining: -amount, details: supNote });
+    applySupplierPaymentToInvoices(supplierName, amount);
+
+    // 3. تصفير/خصم التنبيهات والدفعات المجدولة للطرفين معاً
+    settleCustomAlertsInMemory(clientName, amount);
+    settleCustomAlertsInMemory(supplierName, amount);
+
+    document.getElementById('offsetModal').style.display = 'none';
+    renderAllViews();
+    showToast(`⚖️ تم تنفيذ المقاصة (${clrId}) بمبلغ ${amount.toLocaleString()} ج.م وتحديث الأرصدة والتنبيهات!`);
+
+    enqueueServerSync({
+      type: 'execute_offset', pin: sessionAdminPin,
+      clientName, supplierName, amount, note
+    });
+
+    setTimeout(() => {
+      openPrintReceiptModal({
+        kind: 'client', id: clrId, date: nowStr,
+        partyName: clientName, amount, balanceAfter: cliBalAfter,
+        note: cliNote
+      });
+    }, 120);
+  }
+
 </script>
 
   <!-- 7. نافذة معاينة وطباعة الفاتورة PDF وإرسال واتساب (موبايل / كمبيوتر) -->
@@ -6994,6 +7184,67 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
         <button onclick="shareSupplierSession('mobile')" style="flex:1;background:#16a34a;color:#fff;border:none;padding:9px;border-radius:9px;font-weight:800;font-size:12.5px;cursor:pointer;">📲 واتساب موبايل</button>
         <button onclick="shareSupplierSession('desktop')" style="flex:1;background:#0284c7;color:#fff;border:none;padding:9px;border-radius:9px;font-weight:800;font-size:12.5px;cursor:pointer;">📋 نسخ للكمبيوتر</button>
       </div>
+    </div>
+  </div>
+
+
+  <!-- 10. نافذة المقاصة والتصفية والتحويل المباشر بين عميل ومورد -->
+  <div id="offsetModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:540px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #ea580c;padding-bottom:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:15.5px;font-weight:900;color:#0f2922;">⚖️ مقاصة / تحويل مباشر بين عميل ومورد</div>
+          <div style="font-size:11px;color:#64748b;">تصفية حساب تاجر متبادل أو تحويل مبلغ من عميل لمورد مباشرة — يسمّع في الأرصدة والتنبيهات فوراً</div>
+        </div>
+        <button onclick="document.getElementById('offsetModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+
+      <div id="offsetMutualChipsWrap" style="display:none;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:800;color:#92400e;margin-bottom:4px;">🤝 تجار متبادلون (موجودون كعميل ومورد معاً — اضغط للتصفية الفورية):</div>
+        <div id="offsetMutualChips" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:10px;">
+        <div class="form-group">
+          <label>👤 العميل (يُخصم من مديونيته)</label>
+          <select id="offsetClientSelect" onchange="updateOffsetPreview()"></select>
+        </div>
+        <div class="form-group">
+          <label>🏭 المورد (يُخصم من مستحقاته)</label>
+          <select id="offsetSupplierSelect" onchange="updateOffsetPreview()"></select>
+        </div>
+      </div>
+
+      <div style="background:#0f2922;color:#fff;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px;">
+          <div style="background:rgba(255,255,255,0.08);padding:7px;border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:#a7f3d0;">عليه كعميل حالياً</div>
+            <div id="offsetCliCurBal" style="font-size:15px;font-weight:900;color:#34d399;">0 ج.م</div>
+            <div style="font-size:10px;color:#cbd5e1;">بعد المقاصة: <strong id="offsetCliAfterBal">0</strong></div>
+          </div>
+          <div style="background:rgba(255,255,255,0.08);padding:7px;border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:#fde68a;">له كمورد حالياً</div>
+            <div id="offsetSupCurBal" style="font-size:15px;font-weight:900;color:#fbbf24;">0 ج.م</div>
+            <div style="font-size:10px;color:#cbd5e1;">بعد المقاصة: <strong id="offsetSupAfterBal">0</strong></div>
+          </div>
+        </div>
+        <div id="offsetNetVerdict" style="text-align:center;font-weight:800;font-size:12.5px;color:#38bdf8;border-top:1px dashed rgba(255,255,255,0.2);padding-top:6px;"></div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:8px;">
+        <label>
+          <span>💰 قيمة المقاصة / التحويل المباشر (ج.م)</span>
+          <button type="button" class="auto-gen-badge" onclick="fillSuggestedOffsetAmt()">✨ وضع المبلغ المقترح</button>
+        </label>
+        <input type="number" id="offsetAmountInput" placeholder="0" oninput="updateOffsetPreview()" style="font-size:17px;font-weight:900;text-align:center;">
+      </div>
+
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>ملاحظات (مثال: تحويل إنستاباي / فودافون كاش / تصفية آخر اليوم)</label>
+        <input type="text" id="offsetNoteInput" placeholder="تصفية مقاصة / تحويل مباشر...">
+      </div>
+
+      <button type="button" onclick="submitOffsetNetting()" style="width:100%;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;border:none;padding:11px;border-radius:10px;font-weight:900;font-size:14px;cursor:pointer;">⚖️ تنفيذ المقاصة وتحديث الأرصدة والتنبيهات</button>
     </div>
   </div>
 
