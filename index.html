@@ -312,6 +312,7 @@
       .inv-item-name { font-size: 15.5px; }
       .inv-item-sub { font-size: 16px; }
       .qty-btn { width: 32px; height: 32px; font-size: 18px; }
+      .qty-edit-input { width: 82px; padding: 5px 6px; font-size: 14.5px; }
       .price-edit-input { width: 88px; padding: 6px; font-size: 14.5px; }
       .cat-item-title { font-size: 14.5px; }
       .cat-item-meta { font-size: 12.5px; }
@@ -620,6 +621,18 @@
       transition: background 0.15s;
     }
     .qty-btn:hover { background: #cbd5e1; }
+    .qty-edit-input {
+      width: 68px;
+      padding: 4px 5px;
+      border: 1.5px solid #94a3b8;
+      border-radius: 6px;
+      text-align: center;
+      font-weight: 900;
+      font-size: 13.5px;
+      background: #fff;
+      color: #0f172a;
+    }
+    .qty-edit-input:focus { outline: none; border-color: #059669; }
     .price-edit-input {
       width: 74px;
       padding: 4px 6px;
@@ -1217,7 +1230,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v4.0</span>
+          <span>ERP Pro v4.1</span>
         </div>
         <button id="lockAdminBtn" class="lock-btn" onclick="lockAdminSession()">🔒 قفل الإدارة</button>
         <span class="conn-badge" id="connBadge">جاري الاتصال...</span>
@@ -5065,7 +5078,7 @@
           <div class="inv-item-controls">
             <div class="qty-group">
               <button class="qty-btn" onclick="changeQty(${idx},-1)">-</button>
-              <span style="font-weight:900;font-size:14.5px;min-width:18px;text-align:center;">${item.qty}</span>
+              <input type="number" class="qty-edit-input" min="1" step="1" value="${item.qty}" title="اكتب عدد الوحدات مباشرة" oninput="changeItemQtyLive(${idx}, this.value)" onchange="finalizeItemQty(${idx}, this.value)">
               <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
             </div>
             <div style="display:flex;align-items:center;gap:4px;">
@@ -5109,7 +5122,29 @@
     renderInvoiceItems();
   }
   function updateManualEndDate(idx, dateVal) { if (dateVal) { invoiceItems[idx].endDate = dateVal; invoiceItems[idx].durationLabel = 'حتى ' + dateVal; saveDraftState(); } }
-  function changeQty(idx, d) { invoiceItems[idx].qty += d; if (invoiceItems[idx].qty <= 0) invoiceItems.splice(idx, 1); renderInvoiceItems(); }
+  function changeQty(idx, d) { invoiceItems[idx].qty = (Number(invoiceItems[idx].qty) || 0) + d; if (invoiceItems[idx].qty <= 0) invoiceItems.splice(idx, 1); renderInvoiceItems(); }
+  function changeItemQtyLive(idx, val) {
+    if (!invoiceItems[idx]) return;
+    const q = Math.max(0, Number(val) || 0);
+    invoiceItems[idx].qty = q;
+    const cards = document.querySelectorAll('.inv-item-card');
+    if (cards[idx]) {
+      const subEl = cards[idx].querySelector('.inv-item-sub');
+      if (subEl) subEl.innerText = `${(q * (Number(invoiceItems[idx].price) || 0)).toLocaleString()} ج.م`;
+    }
+    updateTotals();
+    saveDraftState();
+  }
+  function finalizeItemQty(idx, val) {
+    if (!invoiceItems[idx]) return;
+    const q = Number(val) || 0;
+    if (q <= 0) {
+      invoiceItems.splice(idx, 1);
+    } else {
+      invoiceItems[idx].qty = q;
+    }
+    renderInvoiceItems();
+  }
   function changeItemPriceLive(idx, val) {
     invoiceItems[idx].price = Number(val) || 0;
     const cards = document.querySelectorAll('.inv-item-card');
