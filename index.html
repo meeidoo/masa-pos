@@ -1230,7 +1230,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v4.1</span>
+          <span>ERP Pro v5.0</span>
         </div>
         <button id="lockAdminBtn" class="lock-btn" onclick="lockAdminSession()">🔒 قفل الإدارة</button>
         <span class="conn-badge" id="connBadge">جاري الاتصال...</span>
@@ -1241,6 +1241,10 @@
       <nav class="nav-tabs">
         <button class="nav-tab active" data-tab="pos" onclick="requestAdminTab('pos', this)">
           <span>🛒</span><span>نقطة البيع (POS)</span>
+        </button>
+        <button class="nav-tab" data-tab="quotes" onclick="requestAdminTab('quotes', this)">
+          <span>📋</span><span>عروض الأسعار</span>
+          <span id="navQuotesCount" class="tab-badge" style="background:#0284c7;display:none;">0</span>
         </button>
         <button class="nav-tab" data-tab="alerts" onclick="requestAdminTab('alerts', this)">
           <span>🔔</span><span>مركز التنبيهات</span>
@@ -1312,13 +1316,26 @@
             <button id="modeDeferredBtn" class="rem-chip" onclick="setOrderMode('deferred')">📦 أمر مؤجل</button>
             <input type="date" id="invoiceReminderDate" title="تاريخ التذكير" onchange="saveDraftState()">
             <button class="rem-chip" onclick="setQuickReminderDays(3)">+3 أيام</button>
-            <button id="wholesaleInstToggleBtn" class="rem-chip" style="background:#0284c7;display:none;" onclick="toggleWholesaleInstallments()">📅 تقسيم دفعات</button>
+            <button id="wholesaleInstToggleBtn" class="rem-chip" style="background:#0284c7;" onclick="toggleWholesaleInstallments()">📅 تقسيم دفعات</button>
+            <button class="rem-chip" style="background:#7c3aed;color:#fff;" onclick="saveCurrentAsQuotation()" title="حفظ الفاتورة الحالية كعرض أسعار بدون خصم مخزن أو حساب">📋 حفظ كعرض سعر</button>
+            <button class="rem-chip" style="background:#0d9488;color:#fff;" onclick="openBrokerageModal()" title="شراء من مورد وبيع لعميل أو لحساب الغير">🤝 وساطة / لحساب الغير</button>
           </div>
 
+          <div id="quoteModeBanner" class="edit-banner" style="background:#e0f2fe;color:#0369a1;margin-top:6px;"></div>
+
           <div id="wholesaleInstallmentsBox" class="installments-box">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-              <span style="font-size:10.5px;font-weight:bold;color:#38bdf8;">عدد دفعات تقسيط المتبقي (جملة):</span>
-              <input type="number" id="wsInstCount" min="2" max="12" value="2" oninput="generateWholesaleInstallments()" style="width:52px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+            <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap;">
+              <button type="button" id="wsModeCountBtn" class="rem-chip active-mode" style="flex:1;padding:4px 6px;font-size:10.5px;" onclick="setWsInstMode('count')">🔢 حسب عدد الدفعات</button>
+              <button type="button" id="wsModeWeeklyBtn" class="rem-chip" style="flex:1;padding:4px 6px;font-size:10.5px;" onclick="setWsInstMode('weekly')">💵 حسب قيمة الدفعة الأسبوعية</button>
+            </div>
+            <div id="wsCountInputRow" style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+              <span style="font-size:10.5px;font-weight:bold;color:#38bdf8;">عدد دفعات تقسيط المتبقي:</span>
+              <input type="number" id="wsInstCount" min="1" max="24" value="2" oninput="generateWholesaleInstallments()" style="width:62px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+            </div>
+            <div id="wsWeeklyInputRow" style="display:none;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:10.5px;font-weight:bold;color:#34d399;">قيمة الدفعة كل أسبوع (ج.م):</span>
+              <input type="number" id="wsInstWeeklyAmt" min="1" placeholder="مثال: 1500" oninput="generateWholesaleInstallments()" style="width:95px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+              <span id="wsWeeksCalcBadge" style="font-size:10px;color:#fde68a;font-weight:800;"></span>
             </div>
             <div id="wsInstRows"></div>
           </div>
@@ -1350,6 +1367,41 @@
         </div>
         <div class="catalog-grid" id="desktopCatalogGrid"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- 1.5 عروض الأسعار المنفصلة (بدون أثر مخزني أو محاسبي) -->
+  <div id="tab-quotes" class="tab-content">
+    <div class="card" style="background:linear-gradient(135deg,#0f2922,#1e3a8a);color:#fff;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-size:14px;font-weight:900;">📋 عروض الأسعار المركونة (خارج المخزن والحسابات)</div>
+          <div style="font-size:11px;color:#bfdbfe;margin-top:2px;">تُطبع وتُرسل للعميل — ولا تؤثر على المخزن أو المديونية إلا عند الضغط على "تحويل للبيع"</div>
+        </div>
+        <button onclick="startNewQuoteInPos()" style="background:#34d399;color:#0f2922;border:none;padding:9px 13px;border-radius:9px;font-weight:900;font-size:12px;cursor:pointer;">➕ إنشاء عرض سعر جديد</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:10px;">
+      <div class="sub-filter-bar">
+        <button class="filter-pill active" onclick="setQuoteFilter('pending', this)">📌 العروض المركونة</button>
+        <button class="filter-pill" onclick="setQuoteFilter('all', this)">📋 كل العروض</button>
+        <button class="filter-pill" onclick="setQuoteFilter('converted', this)">✅ المحوّلة لفواتير بيع</button>
+      </div>
+      <div style="margin-bottom:8px;">
+        <input type="text" id="quoteSearchInput" placeholder="🔍 بحث باسم العميل أو رقم العرض..." oninput="renderQuotationsTable()" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:9px;font-size:12.5px;">
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>العرض / التاريخ</th>
+            <th>العميل / الأصناف</th>
+            <th>الإجمالي</th>
+            <th>تحكم وتحويل للبيع</th>
+          </tr>
+        </thead>
+        <tbody id="quotationsTableBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -1569,6 +1621,12 @@
           </button>
           <button onclick="openUnifiedPayCollectModal('supplier', '', '')" style="background:var(--success);color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             💸 سداد لمورد
+          </button>
+          <button onclick="openBrokerageModal()" style="background:#7c3aed;color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
+            🤝 وساطة / لحساب الغير
+          </button>
+          <button onclick="openSupplierSessionModal('')" style="background:#f59e0b;color:#0f172a;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
+            📅 جلسة مورد يومية
           </button>
         </div>
       </div>
@@ -1811,9 +1869,18 @@
         </div>
 
         <div id="purInstallmentsBox" style="display:none;margin-top:7px;padding-top:7px;border-top:1px dashed #475569;">
-          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+          <div style="display:flex;gap:5px;margin-bottom:6px;">
+            <button type="button" id="purModeCountBtn" class="rem-chip active-mode" style="flex:1;padding:4px;font-size:10.5px;" onclick="setPurInstMode('count')">🔢 حسب عدد الدفعات</button>
+            <button type="button" id="purModeWeeklyBtn" class="rem-chip" style="flex:1;padding:4px;font-size:10.5px;" onclick="setPurInstMode('weekly')">💵 حسب قيمة الدفعة الأسبوعية</button>
+          </div>
+          <div id="purCountInputRow" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
             <span>عدد الدفعات لتقسيم المتبقي:</span>
-            <input type="number" id="purInstCount" min="1" max="12" value="3" oninput="generatePurchaseInstallments()" style="width:52px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+            <input type="number" id="purInstCount" min="1" max="24" value="3" oninput="generatePurchaseInstallments()" style="width:58px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+          </div>
+          <div id="purWeeklyInputRow" style="display:none;justify-content:space-between;align-items:center;font-size:11px;gap:6px;flex-wrap:wrap;">
+            <span style="color:#34d399;font-weight:bold;">قيمة الدفعة كل أسبوع (ج.م):</span>
+            <input type="number" id="purInstWeeklyAmt" min="1" placeholder="مثال: 2000" oninput="generatePurchaseInstallments()" style="width:92px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+            <span id="purWeeksCalcBadge" style="font-size:10px;color:#fde68a;font-weight:800;"></span>
           </div>
           <div id="purInstRows"></div>
         </div>
@@ -2298,7 +2365,10 @@
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQ7r2Htn8Ct6LyfxeFgf9GZdLxWm9WEJJhz_mgTPVQ142X4UmzIDN5xntQ5HOHYE47/exec";
 
   let catalog = [], clients = [], oldInvoices = [], paymentsList = [], subscriptionsList = [];
-  let suppliersList = [], supplierLogsList = [], rmaList = [], customAlertsList = [];
+  let suppliersList = [], supplierLogsList = [], rmaList = [], customAlertsList = [], quotationsList = [];
+  let editingQuoteId = null, convertingQuoteId = null, currentQuoteFilter = 'pending';
+  let wsInstMode = 'count', purInstMode = 'count';
+  let brokerageMode = 'direct', brokerageCart = [];
   let invoiceItems = [], purchaseCart = [];
   let editingInvoiceId = null, currentOrderMode = 'instant', purchasePayMode = 'instant';
   let unifiedPayType = 'client', unifiedFullOrPart = 'part';
@@ -2649,6 +2719,7 @@
         supplierLogsList = data.supplierLogs || [];
         rmaList = data.rmaList || [];
         customAlertsList = data.customAlerts || [];
+        quotationsList = data.quotations || [];
 
         invoiceItems.forEach(it => { it.prodRef = catalog.find(p => p.name === it.name); });
         updateConnBadge();
@@ -2684,6 +2755,7 @@
     renderPaymentsTable();
     renderSubscriptionsTable();
     renderUnifiedAlerts();
+    renderQuotationsTable();
     renderSuppliersSection();
     renderRmaSection();
     renderBrandPills();
@@ -3436,6 +3508,15 @@
     if (purchasePayMode === 'deferred') generatePurchaseInstallments();
   }
 
+  function setPurInstMode(mode) {
+    purInstMode = mode;
+    document.getElementById('purModeCountBtn').classList.toggle('active-mode', mode === 'count');
+    document.getElementById('purModeWeeklyBtn').classList.toggle('active-mode', mode === 'weekly');
+    document.getElementById('purCountInputRow').style.display = (mode === 'count') ? 'flex' : 'none';
+    document.getElementById('purWeeklyInputRow').style.display = (mode === 'weekly') ? 'flex' : 'none';
+    generatePurchaseInstallments();
+  }
+
   function generatePurchaseInstallments() {
     const total = purchaseCart.reduce((s, it) => s + (it.qty * it.unitCost), 0);
     const prevBal = getSelectedPurSupplierPrevBal();
@@ -3443,29 +3524,28 @@
     const netPayable = Math.max(0, total - creditUsed);
     const paid = Number(document.getElementById('purPaid').value) || 0;
     const rem = Math.max(0, netPayable - paid);
-    const count = Math.max(1, Math.min(12, Number(document.getElementById('purInstCount').value) || 3));
     const container = document.getElementById('purInstRows');
+    const badge = document.getElementById('purWeeksCalcBadge');
     if (rem <= 0) {
+      if (badge) badge.innerText = '';
       container.innerHTML = `<div style="font-size:10.5px;color:#94a3b8;margin-top:4px;">لا يوجد متبقي لتقسيمه</div>`;
       return;
     }
-    const baseAmt = Math.floor(rem / count);
-    const remainder = rem - (baseAmt * count);
-    let html = '';
-    for (let i = 0; i < count; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + ((i + 1) * 7));
-      const dateStr = d.toISOString().split('T')[0];
-      const amt = baseAmt + (i === count - 1 ? remainder : 0);
-      html += `
-        <div class="inst-row">
-          <span style="min-width:42px;color:#e2e8f0;">دفعة ${i + 1}:</span>
-          <input type="number" class="pur-inst-amt" value="${amt}" style="width:78px;">
-          <input type="date" class="pur-inst-date" value="${dateStr}" style="flex:1;">
-        </div>
-      `;
+    const list = buildWeeklyScheduleList(rem, purInstMode, document.getElementById('purInstCount').value, document.getElementById('purInstWeeklyAmt').value);
+    if (purInstMode === 'weekly' && badge) {
+      badge.innerText = list.length > 0 ? `= ${list.length} أسبوع` : 'اكتب قيمة القسط';
     }
-    container.innerHTML = html;
+    if (list.length === 0) {
+      container.innerHTML = `<div style="font-size:10.5px;color:#fde68a;margin-top:4px;">اكتب قيمة الدفعة الأسبوعية لحساب الأسابيع تلقائياً</div>`;
+      return;
+    }
+    container.innerHTML = list.map((it, i) => `
+      <div class="inst-row">
+        <span style="min-width:46px;color:#e2e8f0;">أسبوع ${i + 1}:</span>
+        <input type="number" class="pur-inst-amt" value="${it.amount}" style="width:78px;">
+        <input type="date" class="pur-inst-date" value="${it.date}" style="flex:1;">
+      </div>
+    `).join('');
   }
 
   function submitMultiSupplierPurchase() {
@@ -4171,6 +4251,7 @@
         <td style="font-weight:900;color:${s.balance > 0 ? '#dc2626' : '#16a34a'};">${s.balance.toLocaleString()} ج.م</td>
         <td style="font-size:10px;">📅 ${s.lastUpdate || '-'}</td>
         <td style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn-sm" style="background:#fef3c7;color:#92400e;" title="جلسة اليوم لهذا المورد" onclick="openSupplierSessionModal('${safeName}')">📅</button>
           <button class="btn-sm" style="background:#e0e7ff;color:#1e40af;" title="كشف حساب تفصيلي" onclick="openDetailedStatement('supplier', '${safeName}')">📜</button>
           <button class="btn-sm" style="background:#dcfce7;color:#166534;" title="سداد" onclick="openUnifiedPayCollectModal('supplier', '${safeName}', ${s.balance > 0 ? s.balance : ''})">💸</button>
           <button class="btn-sm" style="background:#f3e8ff;color:#6b21a8;" title="إضافة دفعة مجدولة" onclick="openAlertModal({ target: '${safeName}', title: 'سداد دفعة مورد (${safeName})', amount: ${s.balance > 0 ? s.balance : 0} })">📅+</button>
@@ -4330,16 +4411,8 @@
 
   function handleTierChange() {
     recalculateAllPrices();
-    const tier = document.getElementById('priceTier').value;
     const btn = document.getElementById('wholesaleInstToggleBtn');
-    const box = document.getElementById('wholesaleInstallmentsBox');
-    if (tier === 'wholesale') {
-      btn.style.display = 'inline-block';
-    } else {
-      btn.style.display = 'none';
-      box.style.display = 'none';
-      document.getElementById('wsInstRows').innerHTML = '';
-    }
+    if (btn) btn.style.display = 'inline-block';
   }
 
   function toggleWholesaleInstallments() {
@@ -4356,37 +4429,72 @@
     }
   }
 
+  function buildWeeklyScheduleList(rem, mode, countVal, weeklyAmtVal) {
+    if (rem <= 0) return [];
+    const list = [];
+    if (mode === 'weekly') {
+      const wAmt = Number(weeklyAmtVal) || 0;
+      if (wAmt <= 0) return [];
+      const weeks = Math.min(52, Math.ceil(rem / wAmt));
+      let left = rem;
+      for (let i = 0; i < weeks; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + ((i + 1) * 7));
+        const amt = (i === weeks - 1) ? Math.round(left * 100) / 100 : Math.min(wAmt, left);
+        left = Math.max(0, left - amt);
+        if (amt > 0) list.push({ amount: amt, date: d.toISOString().split('T')[0] });
+      }
+      return list;
+    }
+    const count = Math.max(1, Math.min(24, Number(countVal) || 2));
+    const baseAmt = Math.floor(rem / count);
+    const remainder = rem - (baseAmt * count);
+    for (let i = 0; i < count; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + ((i + 1) * 7));
+      list.push({ amount: baseAmt + (i === count - 1 ? remainder : 0), date: d.toISOString().split('T')[0] });
+    }
+    return list;
+  }
+
+  function setWsInstMode(mode) {
+    wsInstMode = mode;
+    document.getElementById('wsModeCountBtn').classList.toggle('active-mode', mode === 'count');
+    document.getElementById('wsModeWeeklyBtn').classList.toggle('active-mode', mode === 'weekly');
+    document.getElementById('wsCountInputRow').style.display = (mode === 'count') ? 'flex' : 'none';
+    document.getElementById('wsWeeklyInputRow').style.display = (mode === 'weekly') ? 'flex' : 'none';
+    generateWholesaleInstallments();
+  }
+
   function generateWholesaleInstallments() {
     const total = getInvoiceMathSummary(invoiceItems).netTotal;
     const paid = Number(document.getElementById('paidAmount').value) || 0;
     const rem = Math.max(0, total - paid);
-    const count = Math.max(1, Math.min(12, Number(document.getElementById('wsInstCount').value) || 2));
     const container = document.getElementById('wsInstRows');
+    const badge = document.getElementById('wsWeeksCalcBadge');
     if (rem <= 0) {
+      if (badge) badge.innerText = '';
       container.innerHTML = `<div style="font-size:10.5px;color:#94a3b8;margin-top:4px;">لا يوجد متبقي لتقسيمه</div>`;
       return;
     }
-    const baseAmt = Math.floor(rem / count);
-    const remainder = rem - (baseAmt * count);
-    let html = '';
-    for (let i = 0; i < count; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() + ((i + 1) * 7));
-      const dateStr = d.toISOString().split('T')[0];
-      const amt = baseAmt + (i === count - 1 ? remainder : 0);
-      html += `
-        <div class="inst-row">
-          <span style="min-width:42px;color:#e2e8f0;">دفعة ${i + 1}:</span>
-          <input type="number" class="ws-inst-amt" value="${amt}" style="width:78px;">
-          <input type="date" class="ws-inst-date" value="${dateStr}" style="flex:1;">
-        </div>
-      `;
+    const list = buildWeeklyScheduleList(rem, wsInstMode, document.getElementById('wsInstCount').value, document.getElementById('wsInstWeeklyAmt').value);
+    if (wsInstMode === 'weekly') {
+      if (badge) badge.innerText = list.length > 0 ? `= ${list.length} أسبوع` : 'اكتب قيمة القسط';
     }
-    container.innerHTML = html;
+    if (list.length === 0) {
+      container.innerHTML = `<div style="font-size:10.5px;color:#fde68a;margin-top:4px;">اكتب قيمة الدفعة الأسبوعية لحساب الأسابيع تلقائياً</div>`;
+      return;
+    }
+    container.innerHTML = list.map((it, i) => `
+      <div class="inst-row">
+        <span style="min-width:46px;color:#e2e8f0;">أسبوع ${i + 1}:</span>
+        <input type="number" class="ws-inst-amt" value="${it.amount}" style="width:78px;">
+        <input type="date" class="ws-inst-date" value="${it.date}" style="flex:1;">
+      </div>
+    `).join('');
   }
 
   function getWholesaleInstallmentsData() {
-    if (document.getElementById('priceTier').value !== 'wholesale') return [];
     if (document.getElementById('wholesaleInstallmentsBox').style.display !== 'block') return [];
     const amts = document.querySelectorAll('.ws-inst-amt');
     const dates = document.querySelectorAll('.ws-inst-date');
@@ -6146,8 +6254,9 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
   function setFullPaid() { document.getElementById('paidAmount').value = Math.max(0, getInvoiceMathSummary(invoiceItems).netTotal); onPaidAmountInput(); }
   
   function clearInvoice() {
-    invoiceItems = []; editingInvoiceId = null;
+    invoiceItems = []; editingInvoiceId = null; editingQuoteId = null; convertingQuoteId = null;
     document.getElementById('editModeBanner').style.display = 'none';
+    const qb = document.getElementById('quoteModeBanner'); if (qb) { qb.style.display = 'none'; qb.innerText = ''; }
     document.getElementById('paidAmount').value = '';
     document.getElementById('clientName').value = '';
     document.getElementById('invoiceReminderDate').value = '';
@@ -6183,6 +6292,7 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     const installments = getWholesaleInstallmentsData();
     const snapshotItems = invoiceItems.map(i => ({ ...i, prodRef: null }));
     const editIdSnapshot = editingInvoiceId;
+    const convertedQuoteSnapshot = convertingQuoteId;
     const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
     let savedInvObj = null;
@@ -6230,6 +6340,12 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
     renderAllViews();
     showToast(orderType === 'deferred' ? "📦 تم حفظ أمر الشحن المؤجل فوراً (جاري المزامنة)!" : "✅ تم اعتماد الفاتورة فوراً (جاري المزامنة في الخلفية)!");
 
+    if (convertedQuoteSnapshot) {
+      const qRef = quotationsList.find(q => q.id === convertedQuoteSnapshot);
+      if (qRef) qRef.status = 'محوّل للبيع';
+      renderQuotationsTable();
+      enqueueServerSync({ type: 'mark_quotation_converted', pin: sessionAdminPin, id: convertedQuoteSnapshot }, false);
+    }
     enqueueServerSync({
       type: 'save_invoice', editInvoiceId: editIdSnapshot, pin: sessionAdminPin,
       clientName, tier: tierLabel, paid, reminderDate, orderType, shippingNote, items: snapshotItems, installments
@@ -6239,6 +6355,485 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
       openPrintInvoiceModal(savedInvObj);
     }, 100);
   }
+
+  // ============================================================================
+  // 1. نظام عروض الأسعار المنفصل (Quotations)
+  // ============================================================================
+  function setQuoteFilter(mode, btn) {
+    currentQuoteFilter = mode;
+    document.querySelectorAll('#tab-quotes .filter-pill').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderQuotationsTable();
+  }
+
+  function startNewQuoteInPos() {
+    clearInvoice();
+    switchTab('pos', document.querySelector('.nav-tab[data-tab="pos"]'));
+    showToast('📋 جهّز الأصناف واضغط "حفظ كعرض سعر" لحفظه خارج المخزن والحسابات');
+  }
+
+  function saveCurrentAsQuotation() {
+    if (!isAdminUnlocked || !sessionAdminPin) {
+      showLoginGate('🔐 أدخل الرقم السري أولاً');
+      return;
+    }
+    if (invoiceItems.length === 0) return alert('أضف صنفاً واحداً على الأقل لحفظ عرض السعر!');
+    const math = getInvoiceMathSummary(invoiceItems);
+    if (math.regularItems.length === 0) return alert('⛔ لا يمكن حفظ عرض سعر بخصم فقط!');
+    const clientName = cleanEgyptianPhone(document.getElementById('clientName').value.trim()) || 'عميل نقدي';
+    const tierMap = { retail: 'قطاعي', technician: 'فني', wholesale: 'جملة' };
+    const tierLabel = tierMap[document.getElementById('priceTier').value] || 'قطاعي';
+    const notes = document.getElementById('shippingNoteInput').value.trim();
+    const snapshotItems = invoiceItems.map(i => ({ ...i, prodRef: null }));
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const editId = editingQuoteId || '';
+    const tempId = editId || ('QT-' + String(quotationsList.length + 1).padStart(4, '0'));
+    const quoteObj = { id: tempId, date: nowStr, clientName, tier: tierLabel, total: math.netTotal, items: snapshotItems, status: 'مركون', notes };
+
+    if (editId) {
+      const idx = quotationsList.findIndex(q => q.id === editId);
+      if (idx >= 0) quotationsList[idx] = quoteObj;
+    } else {
+      quotationsList.unshift(quoteObj);
+    }
+
+    clearInvoice();
+    renderQuotationsTable();
+    showToast(`📋 تم حفظ عرض السعر (${tempId}) بدون أي تأثير على المخزن أو الحسابات!`);
+    enqueueServerSync({
+      type: 'save_quotation', pin: sessionAdminPin, id: editId,
+      clientName, tier: tierLabel, total: math.netTotal, items: snapshotItems, status: 'مركون', notes
+    });
+    setTimeout(() => openPrintQuotationModal(quoteObj), 100);
+  }
+
+  function renderQuotationsTable() {
+    const tbody = document.getElementById('quotationsTableBody');
+    const badge = document.getElementById('navQuotesCount');
+    const pendingCount = quotationsList.filter(q => q.status !== 'محوّل للبيع').length;
+    if (badge) {
+      badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+      badge.innerText = pendingCount;
+    }
+    if (!tbody) return;
+    const qStr = normalizeArabic((document.getElementById('quoteSearchInput') || {}).value || '');
+    const filtered = quotationsList.filter(q => {
+      if (currentQuoteFilter === 'pending' && q.status === 'محوّل للبيع') return false;
+      if (currentQuoteFilter === 'converted' && q.status !== 'محوّل للبيع') return false;
+      if (qStr && !normalizeArabic(q.clientName + ' ' + q.id).includes(qStr)) return false;
+      return true;
+    });
+
+    tbody.innerHTML = filtered.map(q => {
+      const isConv = q.status === 'محوّل للبيع';
+      const itemsPreview = (q.items || []).filter(x => x.kind !== 'discount').map(x => `${x.qty}×${x.name}`).join(' + ');
+      return `
+        <tr style="background:${isConv ? '#f0fdf4' : '#fff'};">
+          <td style="font-size:10px;font-weight:bold;">
+            ${q.id}<br><span style="color:#64748b;font-weight:normal;">📅 ${q.date || '-'}</span><br>
+            <span class="alert-badge" style="background:${isConv ? '#dcfce7' : '#e0f2fe'};color:${isConv ? '#166534' : '#0369a1'};">${q.status || 'مركون'}</span>
+          </td>
+          <td style="text-align:right;">
+            <strong>${q.clientName}</strong> <span style="font-size:10px;color:#64748b;">(${q.tier})</span>
+            <br><span style="font-size:10.5px;color:#475569;">${itemsPreview}</span>
+          </td>
+          <td style="font-weight:900;color:#0f2922;">${(Number(q.total) || 0).toLocaleString()} ج.م</td>
+          <td style="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;">
+            <button class="btn-sm" style="background:#dcfce7;color:#166534;font-weight:800;" title="تحويل إلى فاتورة بيع في الكاشير" onclick="convertQuotationToSale('${q.id}')">🛒 بيع</button>
+            <button class="btn-sm" style="background:#e0e7ff;color:#1e40af;" title="معاينة / PDF / واتساب" onclick="openPrintQuotationById('${q.id}')">🖨️</button>
+            <button class="btn-sm" style="background:#f3e8ff;color:#6b21a8;" title="تحديث بأسعار اليوم" onclick="refreshQuotationPrices('${q.id}')">🔄</button>
+            <button class="btn-sm" style="background:#fef3c7;color:#b45309;" title="تعديل العرض" onclick="editQuotationInPos('${q.id}')">✏️</button>
+            <button class="btn-sm" style="background:#fee2e2;color:#dc2626;" title="حذف العرض" onclick="deleteQuotationById('${q.id}')">🗑️</button>
+          </td>
+        </tr>
+      `;
+    }).join('') || `<tr><td colspan="4" style="color:#64748b;padding:16px;">لا توجد عروض أسعار في هذا القسم بعد</td></tr>`;
+  }
+
+  function loadQuoteItemsIntoPos(q) {
+    clearInvoice();
+    document.getElementById('clientName').value = q.clientName === 'عميل نقدي' ? '' : q.clientName;
+    const tierMap = { 'قطاعي': 'retail', 'فني': 'technician', 'جملة': 'wholesale' };
+    document.getElementById('priceTier').value = tierMap[q.tier] || 'retail';
+    handleTierChange();
+    invoiceItems = (q.items || []).map(it => ({ ...it, prodRef: catalog.find(p => p.name === it.name) || null }));
+    renderInvoiceItems(true);
+    switchTab('pos', document.querySelector('.nav-tab[data-tab="pos"]'));
+  }
+
+  function convertQuotationToSale(id) {
+    const q = quotationsList.find(x => x.id === id);
+    if (!q) return;
+    loadQuoteItemsIntoPos(q);
+    convertingQuoteId = q.id;
+    const qb = document.getElementById('quoteModeBanner');
+    if (qb) { qb.style.display = 'inline-block'; qb.innerText = `🛒 تحويل عرض السعر (${q.id}) إلى فاتورة بيع — حدد المدفوع واضغط اعتماد`; }
+    showToast(`🛒 تم فتح عرض السعر (${q.id}) في الكاشير — راجع المدفوع واضغط اعتماد`);
+    setTimeout(() => { const p = document.getElementById('paidAmount'); if (p) p.focus(); }, 150);
+  }
+
+  function editQuotationInPos(id) {
+    const q = quotationsList.find(x => x.id === id);
+    if (!q) return;
+    loadQuoteItemsIntoPos(q);
+    editingQuoteId = q.id;
+    const qb = document.getElementById('quoteModeBanner');
+    if (qb) { qb.style.display = 'inline-block'; qb.innerText = `✏️ تعديل عرض السعر (${q.id}) — بعد التعديل اضغط "حفظ كعرض سعر"`; }
+    showToast(`✏️ عرض السعر (${q.id}) مفتوح للتعديل`);
+  }
+
+  function refreshQuotationPrices(id) {
+    const q = quotationsList.find(x => x.id === id);
+    if (!q) return;
+    const tierMap = { 'قطاعي': 'retail', 'فني': 'technician', 'جملة': 'wholesale' };
+    const tKey = tierMap[q.tier] || 'retail';
+    (q.items || []).forEach(it => {
+      if (it.kind === 'discount') return;
+      const p = catalog.find(x => x.name === it.name);
+      if (p && p[tKey]) it.price = Number(p[tKey]);
+    });
+    q.total = getInvoiceMathSummary(q.items).netTotal;
+    renderQuotationsTable();
+    showToast(`🔄 تم تحديث أسعار عرض السعر (${q.id}) حسب أحدث أسعار الكتالوج!`);
+    enqueueServerSync({
+      type: 'save_quotation', pin: sessionAdminPin, id: q.id,
+      clientName: q.clientName, tier: q.tier, total: q.total, items: q.items, status: q.status, notes: q.notes
+    });
+  }
+
+  function deleteQuotationById(id) {
+    if (!confirm(`هل تريد حذف عرض السعر (${id}) نهائياً؟`)) return;
+    quotationsList = quotationsList.filter(q => q.id !== id);
+    renderQuotationsTable();
+    showToast(`🗑️ تم حذف عرض السعر (${id})`);
+    enqueueServerSync({ type: 'delete_quotation', pin: sessionAdminPin, id });
+  }
+
+  function buildQuotationWhatsAppText(q, platform = 'mobile') {
+    const math = getInvoiceMathSummary(q.items || []);
+    const dateOnly = q.date ? String(q.date).split(' ')[0] : new Date().toISOString().split('T')[0];
+    const lines = math.regularItems.map(it => {
+      const sum = (Number(it.qty) || 0) * (Number(it.price) || 0);
+      return `▪️ ${it.name} (${it.qty} × ${Number(it.price).toLocaleString()} ج.م) = *${sum.toLocaleString()} ج.م*`;
+    }).join('\n');
+    const discLines = math.discountItems.map(d => `➖ *${d.discountNote ? 'خصم (' + d.discountNote + ')' : 'خصم'}:* -${d.price.toLocaleString()} ج.م`).join('\n');
+    let text = `📋 *عرض أسعار*\n*ماسا جروب للإلكترونيات* ⚡\nرقم العرض: *${q.id}*\nالتاريخ: ${dateOnly}\nالعميل: *${q.clientName}*\n\n*الأصناف والأسعار:*\n${lines}\n\n`;
+    if (math.totalDiscount > 0) {
+      text += `💰 الإجمالي قبل الخصم: ${math.itemsSubtotal.toLocaleString()} ج.م\n${discLines}\n✅ *الصافي النهائي:* *${math.netTotal.toLocaleString()} ج.م*\n`;
+    } else {
+      text += `💰 *إجمالي عرض السعر:* *${math.netTotal.toLocaleString()} ج.م*\n`;
+    }
+    text += `\n📌 *ملاحظة:* هذا عرض أسعار استرشادي لحين تأكيد التنفيذ.\n\nشرفنا التعامل معكم 🤝\nم. محمد نجاح\n01002902102 - 01270919376\nhttps://masa-vip.com`;
+    return text;
+  }
+
+  function openPrintQuotationById(id) {
+    const q = quotationsList.find(x => x.id === id);
+    if (q) openPrintQuotationModal(q);
+  }
+
+  function openPrintQuotationModal(q) {
+    document.querySelector('#printInvoiceModal .no-print-inv div').innerText = '📋 معاينة عرض الأسعار — طباعة / إرسال';
+    const math = getInvoiceMathSummary(q.items || []);
+    const dateOnly = q.date ? String(q.date).split(' ')[0] : new Date().toISOString().split('T')[0];
+    const rowsHtml = math.regularItems.map((it, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td style="text-align:right;font-weight:700;">${it.name}</td>
+        <td>${it.qty}</td>
+        <td>${Number(it.price).toLocaleString()} ج.م</td>
+        <td style="font-weight:800;">${((Number(it.qty) || 0) * (Number(it.price) || 0)).toLocaleString()} ج.م</td>
+      </tr>
+    `).join('');
+    const discHtml = math.discountItems.map(d => `
+      <tr style="background:#fff1f2;color:#be123c;font-weight:800;">
+        <td>➖</td><td colspan="3" style="text-align:right;">${d.discountNote ? 'خصم (' + d.discountNote + ')' : 'خصم'}</td>
+        <td dir="ltr">-${d.price.toLocaleString()} ج.م</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('printInvoiceBody').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0284c7;padding-bottom:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:17px;font-weight:900;color:#0f2922;">⚡ ماسا جروب للإلكترونيات</div>
+          <div style="font-size:11px;color:#475569;font-weight:700;">رسيفرات • كاميرات مراقبة • اشتراكات IPTV</div>
+        </div>
+        <div style="text-align:left;font-size:11.5px;">
+          <div style="font-weight:900;color:#0284c7;">📋 عرض أسعار (Quotation)</div>
+          <div>رقم العرض: <strong>${q.id}</strong></div>
+          <div>التاريخ: <strong>${dateOnly}</strong></div>
+        </div>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;margin-bottom:10px;display:flex;justify-content:space-between;font-size:12.5px;">
+        <div>العميل: <strong>${q.clientName}</strong></div>
+        <div>الفئة: <strong>${q.tier || 'قطاعي'}</strong></div>
+      </div>
+      <table style="margin-bottom:10px;">
+        <thead><tr><th style="width:36px;">#</th><th style="text-align:right;">الصنف</th><th style="width:55px;">الكمية</th><th style="width:85px;">السعر</th><th style="width:95px;">الإجمالي</th></tr></thead>
+        <tbody>${rowsHtml}${discHtml}</tbody>
+      </table>
+      <div style="background:#0f2922;color:#fff;padding:10px 12px;border-radius:9px;display:flex;justify-content:space-between;font-size:14.5px;">
+        <span>إجمالي عرض السعر النهائي:</span><strong style="color:#34d399;">${math.netTotal.toLocaleString()} ج.م</strong>
+      </div>
+      <div style="text-align:center;font-size:11px;color:#475569;margin-top:10px;border-top:1px solid #e2e8f0;padding-top:6px;">
+        شرفنا التعامل معكم 🤝 | م. محمد نجاح: 01002902102 - 01270919376 | masa-vip.com
+      </div>
+    `;
+    document.getElementById('invWaMobileBtn').onclick = () => openWhatsAppBusiness(q.clientName, buildQuotationWhatsAppText(q, 'mobile'));
+    document.getElementById('invWaDesktopBtn').onclick = () => copyTextToClipboard(buildQuotationWhatsAppText(q, 'desktop'), '✅ تم نسخ عرض السعر — اضغط لصق (Ctrl+V) في واتساب');
+    document.getElementById('printInvoiceModal').style.display = 'flex';
+  }
+
+  // ============================================================================
+  // 2. نظام الوساطة والبيع/الشراء لحساب الغير بدفعات (Brokerage / Third-Party)
+  // ============================================================================
+  function openBrokerageModal() {
+    ensureAdminUnlockedThenRun('أدخل الرقم السري لفتح شاشة الوساطة وحساب الغير', () => {
+      brokerageCart = [];
+      document.getElementById('brkSupplierInput').value = '';
+      document.getElementById('brkClientInput').value = '';
+      document.getElementById('brkProdInput').value = '';
+      document.getElementById('brkQty').value = '1';
+      document.getElementById('brkCost').value = '';
+      document.getElementById('brkSell').value = '';
+      document.getElementById('brkSupPaid').value = '0';
+      document.getElementById('brkCliPaid').value = '0';
+      document.getElementById('brkSupWeekly').value = '';
+      document.getElementById('brkCliWeekly').value = '';
+      document.getElementById('brkNotes').value = '';
+      setBrokerageMode('direct');
+      renderBrokerageCart();
+      document.getElementById('brokerageModal').style.display = 'flex';
+    });
+  }
+
+  function setBrokerageMode(mode) {
+    brokerageMode = mode;
+    document.getElementById('brkModeDirectBtn').classList.toggle('active-pair', mode === 'direct');
+    document.getElementById('brkModeThirdBtn').classList.toggle('active-pair', mode === 'third_party');
+  }
+
+  function showBrkEntityDropdown(kind) {
+    const inp = document.getElementById(kind === 'supplier' ? 'brkSupplierInput' : 'brkClientInput');
+    const dd = document.getElementById(kind === 'supplier' ? 'brkSupplierDropdown' : 'brkClientDropdown');
+    const q = normalizeArabic(inp.value);
+    const list = kind === 'supplier' ? suppliersList : clients;
+    const matches = list.filter(x => !q || normalizeArabic(x.name).includes(q)).slice(0, 10);
+    dd.innerHTML = matches.map(x => `
+      <div class="client-dd-item" onclick="document.getElementById('${kind === 'supplier' ? 'brkSupplierInput' : 'brkClientInput'}').value='${x.name.replace(/'/g, "\'")}';document.getElementById('${kind === 'supplier' ? 'brkSupplierDropdown' : 'brkClientDropdown'}').style.display='none';">
+        <span>${kind === 'supplier' ? '🏭 ' : '👤 '}${x.name}</span>
+        <strong style="color:${x.balance > 0 ? '#dc2626' : '#16a34a'};">${x.balance.toLocaleString()}</strong>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function showBrkProdDropdown() {
+    const dd = document.getElementById('brkProdDropdown');
+    const q = normalizeArabic(document.getElementById('brkProdInput').value);
+    const matches = getSortedCatalogByUsage().filter(p => !q || normalizeArabic(p.name).includes(q) || normalizeArabic(p.aliases).includes(q)).slice(0, 10);
+    dd.innerHTML = matches.map(p => `
+      <div class="client-dd-item" onclick="document.getElementById('brkProdInput').value='${p.name.replace(/'/g, "\'")}';document.getElementById('brkCost').value=${p.cost};document.getElementById('brkSell').value=${p.wholesale};document.getElementById('brkProdDropdown').style.display='none';">
+        <span>${p.name}</span><span style="font-size:10px;color:#475569;">تكلفة: ${p.cost} | جملة: ${p.wholesale}</span>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function addItemToBrokerageCart() {
+    const name = document.getElementById('brkProdInput').value.trim();
+    const qty = Number(document.getElementById('brkQty').value) || 0;
+    const cost = Number(document.getElementById('brkCost').value) || 0;
+    const sell = Number(document.getElementById('brkSell').value) || 0;
+    if (!name || qty <= 0 || cost <= 0 || sell <= 0) return alert('اكتب الصنف والكمية وسعر الشراء وسعر البيع');
+    brokerageCart.push({ name, qty, cost, sell });
+    document.getElementById('brkProdInput').value = '';
+    document.getElementById('brkQty').value = '1';
+    document.getElementById('brkCost').value = '';
+    document.getElementById('brkSell').value = '';
+    renderBrokerageCart();
+  }
+
+  function renderBrokerageCart() {
+    const el = document.getElementById('brkCartList');
+    el.innerHTML = brokerageCart.map((it, idx) => `
+      <div class="pur-cart-item">
+        <div>
+          <strong>${it.name}</strong> (${it.qty} وحدة)
+          <div style="font-size:10.5px;color:#475569;">شراء: ${(it.qty * it.cost).toLocaleString()} | بيع: ${(it.qty * it.sell).toLocaleString()} | ربح: <strong style="color:#16a34a;">${(it.qty * (it.sell - it.cost)).toLocaleString()}</strong></div>
+        </div>
+        <button onclick="brokerageCart.splice(${idx},1);renderBrokerageCart();" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+    `).join('') || `<div style="text-align:center;color:#94a3b8;font-size:11.5px;padding:6px;">أضف الأصناف للوساطة بالأعلى</div>`;
+    recalcBrokerageTotals();
+  }
+
+  function recalcBrokerageTotals() {
+    const totCost = brokerageCart.reduce((s, it) => s + it.qty * it.cost, 0);
+    const totSell = brokerageCart.reduce((s, it) => s + it.qty * it.sell, 0);
+    const supPaid = Number(document.getElementById('brkSupPaid').value) || 0;
+    const cliPaid = Number(document.getElementById('brkCliPaid').value) || 0;
+    document.getElementById('brkTotCost').innerText = `${totCost.toLocaleString()} ج.م`;
+    document.getElementById('brkTotSell').innerText = `${totSell.toLocaleString()} ج.م`;
+    document.getElementById('brkTotProfit').innerText = `${(totSell - totCost).toLocaleString()} ج.م`;
+    document.getElementById('brkSupRem').innerText = `${Math.max(0, totCost - supPaid).toLocaleString()} ج.م`;
+    document.getElementById('brkCliRem').innerText = `${Math.max(0, totSell - cliPaid).toLocaleString()} ج.م`;
+    generateBrkInstallments('sup');
+    generateBrkInstallments('cli');
+  }
+
+  function generateBrkInstallments(side) {
+    const tot = brokerageCart.reduce((s, it) => s + it.qty * (side === 'sup' ? it.cost : it.sell), 0);
+    const paid = Number(document.getElementById(side === 'sup' ? 'brkSupPaid' : 'brkCliPaid').value) || 0;
+    const rem = Math.max(0, tot - paid);
+    const weekly = Number(document.getElementById(side === 'sup' ? 'brkSupWeekly' : 'brkCliWeekly').value) || 0;
+    const box = document.getElementById(side === 'sup' ? 'brkSupInstRows' : 'brkCliInstRows');
+    if (rem <= 0 || weekly <= 0) { box.innerHTML = ''; return; }
+    const list = buildWeeklyScheduleList(rem, 'weekly', 1, weekly);
+    box.innerHTML = list.map((it, i) => `
+      <div class="inst-row" style="font-size:10px;">
+        <input type="number" class="brk-${side}-amt" value="${it.amount}" style="width:62px;padding:3px;">
+        <input type="date" class="brk-${side}-date" value="${it.date}" style="flex:1;padding:3px;">
+      </div>
+    `).join('');
+  }
+
+  function collectBrkInstallments(side) {
+    const amts = document.querySelectorAll(`.brk-${side}-amt`);
+    const dates = document.querySelectorAll(`.brk-${side}-date`);
+    const res = [];
+    for (let i = 0; i < amts.length; i++) {
+      const a = Number(amts[i].value) || 0;
+      const d = dates[i].value;
+      if (a > 0 && d) res.push({ amount: a, date: d });
+    }
+    return res;
+  }
+
+  function submitBrokerageOperation() {
+    const supplier = cleanEgyptianPhone(document.getElementById('brkSupplierInput').value.trim());
+    const clientName = cleanEgyptianPhone(document.getElementById('brkClientInput').value.trim());
+    if (!supplier || !clientName || brokerageCart.length === 0) return alert('اختر المورد والعميل وأضف صنفاً واحداً على الأقل');
+
+    const totCost = brokerageCart.reduce((s, it) => s + it.qty * it.cost, 0);
+    const totSell = brokerageCart.reduce((s, it) => s + it.qty * it.sell, 0);
+    const supPaid = Number(document.getElementById('brkSupPaid').value) || 0;
+    const cliPaid = Number(document.getElementById('brkCliPaid').value) || 0;
+    const supRem = totCost - supPaid;
+    const cliRem = totSell - cliPaid;
+    const supInstallments = collectBrkInstallments('sup');
+    const cliInstallments = collectBrkInstallments('cli');
+    const notes = document.getElementById('brkNotes').value.trim();
+    const modeLabel = brokerageMode === 'third_party' ? 'لحساب الغير' : 'وساطة';
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const brkId = 'BRK-' + String(oldInvoices.length + 1).padStart(4, '0');
+
+    const sup = suppliersList.find(s => isSameEntityTarget(s.name, supplier));
+    if (sup) { sup.balance += supRem; sup.lastUpdate = nowStr; }
+    else suppliersList.unshift({ name: supplier, balance: supRem, lastUpdate: nowStr, notes: '' });
+
+    supplierLogsList.unshift({
+      id: 'PUR-' + String(supplierLogsList.length + 1).padStart(4, '0'),
+      date: nowStr, supplier, kind: 'شراء بضاعة', total: totCost, paid: supPaid, remaining: supRem,
+      details: `[${modeLabel} ${brkId} → ${clientName}] ` + brokerageCart.map(x => `${x.qty} × ${x.name}`).join(' + '),
+      items: brokerageCart.map(x => ({ name: x.name, kind: 'service', qty: x.qty, unitCost: x.cost }))
+    });
+
+    const cli = findClientInMemory(clientName);
+    if (cli) { cli.balance += cliRem; cli.lastUpdate = nowStr; }
+    else clients.unshift({ name: clientName, tier: 'جملة', balance: cliRem, behavior: 'دائم', reminderDate: '', lastUpdate: nowStr, notes: '', invoiceCount: 1 });
+
+    const newInv = {
+      id: 'INV-' + String(oldInvoices.length + 1).padStart(4, '0'),
+      date: nowStr, clientName, tier: 'جملة', total: totSell, paid: cliPaid, remaining: cliRem,
+      items: brokerageCart.map(x => ({ name: x.name, kind: 'service', qty: x.qty, price: x.sell })),
+      totalCost: totCost, reminderDate: '', orderType: 'instant', shippingNote: `[${modeLabel} ${brkId} ← ${supplier}] ${notes}`
+    };
+    oldInvoices.unshift(newInv);
+
+    supInstallments.forEach((inst, i) => customAlertsList.unshift({ id: 'ALT-NEW', date: inst.date, target: supplier, title: `سداد دفعة ${modeLabel} (${i + 1}/${supInstallments.length}) - ${brkId}`, amount: inst.amount, kind: 'سداد مورد', status: 'نشط' }));
+    cliInstallments.forEach((inst, i) => customAlertsList.unshift({ id: 'ALT-NEW', date: inst.date, target: clientName, title: `تحصيل دفعة ${modeLabel} (${i + 1}/${cliInstallments.length}) - ${brkId}`, amount: inst.amount, kind: 'تحصيل جملة', status: 'نشط' }));
+
+    const snapshot = [...brokerageCart];
+    document.getElementById('brokerageModal').style.display = 'none';
+    renderAllViews();
+    showToast(`✅ تم اعتماد عملية ${modeLabel} (${brkId}) وتقسيمها على فاتورتين!`);
+
+    enqueueServerSync({
+      type: 'save_brokerage', pin: sessionAdminPin, mode: brokerageMode,
+      supplier, clientName, items: snapshot, supPaid, cliPaid, supInstallments, cliInstallments, notes
+    });
+    setTimeout(() => openPrintInvoiceModal(newInv), 150);
+  }
+
+  // ============================================================================
+  // 3. جلسة المورد اليومية (Daily Supplier Session Summary)
+  // ============================================================================
+  function openSupplierSessionModal(prefillSupplier = '') {
+    const sel = document.getElementById('sessSupplierSelect');
+    sel.innerHTML = suppliersList.map(s => `<option value="${s.name.replace(/"/g, '&quot;')}">${s.name}</option>`).join('')
+      || `<option value="">لا يوجد موردون بعد</option>`;
+    if (prefillSupplier) sel.value = prefillSupplier;
+    document.getElementById('sessDateInput').value = new Date().toISOString().split('T')[0];
+    renderSupplierSessionData();
+    document.getElementById('supplierSessionModal').style.display = 'flex';
+  }
+
+  function renderSupplierSessionData() {
+    const supName = document.getElementById('sessSupplierSelect').value;
+    const dayStr = document.getElementById('sessDateInput').value || new Date().toISOString().split('T')[0];
+    const sup = suppliersList.find(s => isSameEntityTarget(s.name, supName));
+    const moves = supplierLogsList.filter(l => isSameEntityTarget(l.supplier, supName) && String(l.date || '').startsWith(dayStr));
+
+    let purTot = 0, paidTot = 0, netDay = 0;
+    moves.forEach(m => {
+      if (m.kind === 'شراء بضاعة' || m.kind === 'مرتجع مشتريات') purTot += (Number(m.total) || 0);
+      paidTot += (Number(m.paid) || 0);
+      netDay += (Number(m.remaining) || 0);
+    });
+
+    document.getElementById('sessCountVal').innerText = moves.length;
+    document.getElementById('sessPurVal').innerText = `${purTot.toLocaleString()} ج.م`;
+    document.getElementById('sessPaidVal').innerText = `${paidTot.toLocaleString()} ج.م`;
+    document.getElementById('sessNetVal').innerText = `${netDay.toLocaleString()} ج.م`;
+    document.getElementById('sessSupTotalBalVal').innerText = `${(sup ? sup.balance : 0).toLocaleString()} ج.م`;
+
+    document.getElementById('sessMovementsBody').innerHTML = moves.map(m => `
+      <tr>
+        <td style="font-size:10px;font-weight:bold;">${m.id}<br><span style="color:#64748b;">${String(m.date || '').split(' ')[1] || ''}</span></td>
+        <td style="text-align:right;font-size:11px;"><strong>${m.kind}</strong>: ${m.details || '-'}</td>
+        <td style="font-weight:bold;">${(Number(m.total) || 0).toLocaleString()}</td>
+        <td style="color:#16a34a;font-weight:bold;">${(Number(m.paid) || 0).toLocaleString()}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="4" style="color:#64748b;padding:12px;">لا توجد حركات لهذا المورد في تاريخ ${dayStr}</td></tr>`;
+  }
+
+  function quickActionFromSession(action) {
+    const supName = document.getElementById('sessSupplierSelect').value;
+    document.getElementById('supplierSessionModal').style.display = 'none';
+    if (action === 'purchase') {
+      openPurchaseModal();
+      if (supName) { document.getElementById('purSupplierName').value = supName; checkSupplierPrevBalance(); }
+    } else if (action === 'return') {
+      openPurchaseReturnModal();
+      setTimeout(() => { if (supName) { document.getElementById('pretSupplierName').value = supName; checkPretSupplierBal(); } }, 100);
+    } else if (action === 'pay') {
+      const sup = suppliersList.find(s => isSameEntityTarget(s.name, supName));
+      openUnifiedPayCollectModal('supplier', supName, sup && sup.balance > 0 ? sup.balance : '');
+    }
+  }
+
+  function shareSupplierSession(platform) {
+    const supName = document.getElementById('sessSupplierSelect').value;
+    const dayStr = document.getElementById('sessDateInput').value;
+    if (!supName) return;
+    const moves = supplierLogsList.filter(l => isSameEntityTarget(l.supplier, supName) && String(l.date || '').startsWith(dayStr));
+    const lines = moves.map(m => `▪️ ${m.kind}: ${m.details || ''} | قيمة: ${(Number(m.total)||0).toLocaleString()} | مدفوع: ${(Number(m.paid)||0).toLocaleString()}`).join('\n');
+    const msg = `📅 *تصفية جلسة اليوم* | *ماسا جروب للإلكترونيات* ⚡\n🏭 *المورد:* ${supName}\n📆 *التاريخ:* ${dayStr}\n🔢 *عدد الحركات:* ${moves.length}\n📦 *مشتريات اليوم:* ${document.getElementById('sessPurVal').innerText}\n💵 *مسدد اليوم:* ${document.getElementById('sessPaidVal').innerText}\n💰 *صافي اليوم:* ${document.getElementById('sessNetVal').innerText}\n⚠️ *إجمالي الرصيد الكلي:* ${document.getElementById('sessSupTotalBalVal').innerText}\n\n*تفاصيل الحركات:*\n${lines || 'لا توجد حركات'}\n\nشرفنا التعامل معكم 🤝\nم. محمد نجاح | 01002902102 - 01270919376`;
+    if (platform === 'desktop') copyTextToClipboard(msg, '✅ تم نسخ تصفية جلسة المورد — اضغط لصق (Ctrl+V) في واتساب');
+    else openWhatsAppBusiness(supName, msg);
+  }
+
 </script>
 
   <!-- 7. نافذة معاينة وطباعة الفاتورة PDF وإرسال واتساب (موبايل / كمبيوتر) -->
@@ -6255,6 +6850,149 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
         <button id="invWaMobileBtn" style="flex:1;min-width:140px;background:#16a34a;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">📲 واتساب موبايل</button>
         <button id="invWaDesktopBtn" style="flex:1;min-width:140px;background:#0284c7;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">📋 نسخ للكمبيوتر</button>
         <button onclick="printInvoicePDF()" style="flex:1;min-width:130px;background:#0f2922;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">🖨️ طباعة / PDF</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 8. نافذة الوساطة والبيع/الشراء لحساب الغير بدفعات -->
+  <div id="brokerageModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:560px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;color:#0f2922;font-size:15px;">🤝 عملية وساطة / بيع وشراء لحساب الغير</h3>
+        <button onclick="document.getElementById('brokerageModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+
+      <div class="toggle-pair">
+        <button type="button" id="brkModeDirectBtn" class="active-pair" onclick="setBrokerageMode('direct')">🤝 وساطة مباشرة (شراء + بيع)</button>
+        <button type="button" id="brkModeThirdBtn" onclick="setBrokerageMode('third_party')">📦 بيع / شراء لحساب الغير</button>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:8px;">
+        <div class="form-group" style="position:relative;">
+          <label>🏭 المورد (الشراء من)</label>
+          <input type="text" id="brkSupplierInput" autocomplete="off" placeholder="اسم المورد أو رقمه..."
+            onfocus="showBrkEntityDropdown('supplier')" oninput="this.value=cleanEgyptianPhone(this.value);showBrkEntityDropdown('supplier');">
+          <div id="brkSupplierDropdown" class="client-dropdown" style="top:52px;"></div>
+        </div>
+        <div class="form-group" style="position:relative;">
+          <label>👤 العميل / لحساب من</label>
+          <input type="text" id="brkClientInput" autocomplete="off" placeholder="اسم العميل أو رقمه..."
+            onfocus="showBrkEntityDropdown('client')" oninput="this.value=cleanEgyptianPhone(this.value);showBrkEntityDropdown('client');">
+          <div id="brkClientDropdown" class="client-dropdown" style="top:52px;"></div>
+        </div>
+      </div>
+
+      <div style="background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:10px;padding:9px;margin-bottom:8px;">
+        <div class="form-group" style="position:relative;margin-bottom:7px;">
+          <label>اسم الصنف (من الكتالوج أو اكتب صنف حر)</label>
+          <input type="text" id="brkProdInput" autocomplete="off" placeholder="اكتب اسم الصنف..."
+            onfocus="showBrkProdDropdown()" oninput="showBrkProdDropdown()">
+          <div id="brkProdDropdown" class="client-dropdown" style="top:52px;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:0.8fr 1fr 1fr auto;gap:5px;align-items:end;">
+          <div class="form-group"><label>الكمية</label><input type="number" id="brkQty" value="1" min="1"></div>
+          <div class="form-group"><label>سعر الشراء</label><input type="number" id="brkCost" placeholder="0"></div>
+          <div class="form-group"><label>سعر البيع</label><input type="number" id="brkSell" placeholder="0"></div>
+          <button type="button" onclick="addItemToBrokerageCart()" style="background:#0d9488;color:#fff;border:none;padding:9px 10px;border-radius:8px;font-weight:800;cursor:pointer;">➕</button>
+        </div>
+      </div>
+
+      <div id="brkCartList" style="max-height:130px;overflow-y:auto;margin-bottom:8px;"></div>
+
+      <div style="background:#0f2922;color:#fff;padding:9px 11px;border-radius:10px;margin-bottom:9px;font-size:12px;">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-weight:800;margin-bottom:6px;">
+          <span>شراء: <strong id="brkTotCost" style="color:#fbbf24;">0 ج.م</strong></span>
+          <span>بيع: <strong id="brkTotSell" style="color:#38bdf8;">0 ج.م</strong></span>
+          <span>صافي الربح: <strong id="brkTotProfit" style="color:#4ade80;">0 ج.م</strong></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid rgba(255,255,255,0.15);padding-top:7px;">
+          <div>
+            <label style="font-size:10.5px;color:#fde68a;display:block;margin-bottom:3px;">المدفوع للمورد الآن:</label>
+            <input type="number" id="brkSupPaid" value="0" oninput="recalcBrokerageTotals()" style="width:100%;padding:5px;border-radius:6px;border:none;text-align:center;font-weight:800;">
+            <div style="font-size:10px;color:#cbd5e1;margin-top:3px;">متبقي للمورد: <strong id="brkSupRem">0</strong></div>
+            <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
+              <input type="number" id="brkSupWeekly" placeholder="قسط أسبوعي" oninput="generateBrkInstallments('sup')" style="width:100%;padding:4px;border-radius:6px;border:none;font-size:11px;text-align:center;">
+            </div>
+            <div id="brkSupInstRows"></div>
+          </div>
+          <div>
+            <label style="font-size:10.5px;color:#a7f3d0;display:block;margin-bottom:3px;">المدفوع من العميل الآن:</label>
+            <input type="number" id="brkCliPaid" value="0" oninput="recalcBrokerageTotals()" style="width:100%;padding:5px;border-radius:6px;border:none;text-align:center;font-weight:800;">
+            <div style="font-size:10px;color:#cbd5e1;margin-top:3px;">متبقي على العميل: <strong id="brkCliRem">0</strong></div>
+            <div style="margin-top:4px;display:flex;gap:4px;align-items:center;">
+              <input type="number" id="brkCliWeekly" placeholder="قسط أسبوعي" oninput="generateBrkInstallments('cli')" style="width:100%;padding:4px;border-radius:6px;border:none;font-size:11px;text-align:center;">
+            </div>
+            <div id="brkCliInstRows"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:9px;">
+        <input type="text" id="brkNotes" placeholder="ملاحظات العملية (اختياري)...">
+      </div>
+
+      <button type="button" onclick="submitBrokerageOperation()" style="width:100%;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:11px;border-radius:10px;font-weight:900;font-size:13.5px;cursor:pointer;">✅ اعتماد وتقسيم العملية تلقائياً على فاتورتين</button>
+    </div>
+  </div>
+
+  <!-- 9. نافذة جلسة المورد اليومية (تصفية يومية بعدد الحركات) -->
+  <div id="supplierSessionModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:680px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0f2922;padding-bottom:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:15.5px;font-weight:900;color:#0f2922;">📅 جلسة وتصفية المورد اليومية</div>
+          <div style="font-size:11px;color:#64748b;">ملخص فوري لكل حركات المورد خلال اليوم بدون لخبطة</div>
+        </div>
+        <button onclick="document.getElementById('supplierSessionModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕ إغلاق</button>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:10px;">
+        <div class="form-group">
+          <label>اختر المورد</label>
+          <select id="sessSupplierSelect" onchange="renderSupplierSessionData()"></select>
+        </div>
+        <div class="form-group">
+          <label>تاريخ الجلسة</label>
+          <input type="date" id="sessDateInput" onchange="renderSupplierSessionData()">
+        </div>
+      </div>
+
+      <div class="stmt-summary-grid">
+        <div class="stmt-kpi" style="border-top:3px solid #2563eb;"><div class="stmt-kpi-lbl">عدد حركات اليوم</div><div class="stmt-kpi-val" id="sessCountVal">0</div></div>
+        <div class="stmt-kpi" style="border-top:3px solid #d97706;"><div class="stmt-kpi-lbl">مشتريات اليوم</div><div class="stmt-kpi-val" id="sessPurVal">0 ج.م</div></div>
+        <div class="stmt-kpi" style="border-top:3px solid #16a34a;"><div class="stmt-kpi-lbl">مسدد اليوم</div><div class="stmt-kpi-val" id="sessPaidVal" style="color:#16a34a;">0 ج.م</div></div>
+        <div class="stmt-kpi" style="border-top:3px solid #dc2626;"><div class="stmt-kpi-lbl">صافي الجلسة</div><div class="stmt-kpi-val" id="sessNetVal" style="color:#dc2626;">0 ج.م</div></div>
+      </div>
+
+      <div id="sessSupTotalBalStrip" style="background:#0f2922;color:#fff;padding:8px 11px;border-radius:8px;margin-bottom:10px;font-size:12.5px;font-weight:800;display:flex;justify-content:space-between;">
+        <span>إجمالي الرصيد الكلي المستحق للمورد:</span>
+        <strong id="sessSupTotalBalVal" style="color:#fbbf24;">0 ج.م</strong>
+      </div>
+
+      <div style="max-height:220px;overflow-y:auto;margin-bottom:10px;">
+        <table>
+          <thead>
+            <tr>
+              <th>الوقت / السند</th>
+              <th>النوع والتفاصيل</th>
+              <th>القيمة</th>
+              <th>المدفوع</th>
+            </tr>
+          </thead>
+          <tbody id="sessMovementsBody"></tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button onclick="quickActionFromSession('purchase')" class="btn-sm" style="flex:1;padding:8px;background:#0d9488;color:#fff;">📦 + شراء</button>
+        <button onclick="quickActionFromSession('return')" class="btn-sm" style="flex:1;padding:8px;background:#dc2626;color:#fff;">↩️ + مرتجع</button>
+        <button onclick="quickActionFromSession('pay')" class="btn-sm" style="flex:1;padding:8px;background:#16a34a;color:#fff;">💸 + سداد</button>
+      </div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button onclick="shareSupplierSession('mobile')" style="flex:1;background:#16a34a;color:#fff;border:none;padding:9px;border-radius:9px;font-weight:800;font-size:12.5px;cursor:pointer;">📲 واتساب موبايل</button>
+        <button onclick="shareSupplierSession('desktop')" style="flex:1;background:#0284c7;color:#fff;border:none;padding:9px;border-radius:9px;font-weight:800;font-size:12.5px;cursor:pointer;">📋 نسخ للكمبيوتر</button>
       </div>
     </div>
   </div>
