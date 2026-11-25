@@ -1390,6 +1390,61 @@
     .trs-acc-bal { font-size: 16.5px; font-weight: 900; color: #0f2922; }
     .trs-acc-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
 
+
+    .pay-method-bar {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .pay-method-chip {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      padding: 6px 9px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.12s;
+    }
+    .pay-method-chip.active-pm {
+      background: #0f2922;
+      color: #34d399;
+      border-color: #0f2922;
+    }
+    .pay-method-equal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    .pay-method-equal-grid .form-group {
+      margin: 0;
+    }
+    .pay-method-equal-grid input,
+    .pay-method-equal-grid select {
+      width: 100%;
+      padding: 8px 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 700;
+      background: #ffffff;
+    }
+    .exp-summary-table-wrap {
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 11px;
+      padding: 9px 10px;
+      margin-bottom: 10px;
+    }
+
   </style>
 </head>
 <body>
@@ -1433,7 +1488,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v5.5</span>
+          <span>ERP Pro v5.7</span>
         </div>
         <button id="topBellBtn" class="top-bell-btn" title="مركز التنبيهات المستحقة" onclick="openAlertsFromTopBell()">
           <span>🔔</span>
@@ -1864,58 +1919,60 @@
     </div>
   </div>
 
-    <!-- 5.5 الخزنة والحسابات والمصروفات (مستقل تماماً عن أرصدة العملاء والموردين) -->
+  <!-- 5.5 الخزنة وحركاتها + المصروفات وحصر البنود والفترات -->
   <div id="tab-treasury" class="tab-content">
-    <div class="card" style="background:linear-gradient(135deg,#0f2922,#1e3a8a);color:#fff;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-        <div>
-          <div style="font-size:11px;color:#a7f3d0;">إجمالي أرصدة الخزنة والبنوك والمحافظ والاحتياطي (مفصول بدقة عن مديونيات العملاء والموردين)</div>
-          <div id="trsGrandTotal" style="font-size:21px;font-weight:900;color:#34d399;">0 ج.م</div>
-        </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;">
-          <button type="button" onclick="openTreasuryAccountModal()" style="background:#38bdf8;color:#0f172a;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">➕ إضافة بنك / محفظة / حساب</button>
-          <button type="button" onclick="openTreasuryMoveModal('in')" style="background:#10b981;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">📥 إيداع / استلام</button>
-          <button type="button" onclick="openTreasuryMoveModal('out')" style="background:#f59e0b;color:#0f172a;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">📤 سحب / صرف</button>
-          <button type="button" onclick="openTreasuryMoveModal('transfer')" style="background:#8b5cf6;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">🔄 تحويل بين الحسابات</button>
-          <button type="button" onclick="openExpenseModal()" style="background:#ef4444;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">🧾 تسجيل مصروف</button>
-        </div>
-      </div>
-
-      <div class="stmt-summary-grid" style="margin-bottom:0;">
-        <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
-          <div class="stmt-kpi-lbl" style="color:#a7f3d0;">💵 درج الكاش والخزنة</div>
-          <div class="stmt-kpi-val" id="trsSumCash" style="color:#34d399;">0 ج.م</div>
-        </div>
-        <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
-          <div class="stmt-kpi-lbl" style="color:#93c5fd;">🏦 البنوك</div>
-          <div class="stmt-kpi-val" id="trsSumBank" style="color:#93c5fd;">0 ج.م</div>
-        </div>
-        <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
-          <div class="stmt-kpi-lbl" style="color:#fca5a5;">📱 فودافون كاش &amp; إنستاباي</div>
-          <div class="stmt-kpi-val" id="trsSumDigital" style="color:#fca5a5;">0 ج.م</div>
-        </div>
-        <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
-          <div class="stmt-kpi-lbl" style="color:#fde68a;">🛡️ استراتيجي / احتياطي</div>
-          <div class="stmt-kpi-val" id="trsSumReserve" style="color:#fde68a;">0 ج.م</div>
-        </div>
+    <div class="card" style="padding:10px;margin-bottom:10px;">
+      <div class="toggle-pair" style="margin-bottom:0;">
+        <button type="button" id="trsMainBtnVault" class="active-pair" onclick="switchTreasuryTopView('vault')">🏦 الخزنة وحركاتها</button>
+        <button type="button" id="trsMainBtnExpenses" onclick="switchTreasuryTopView('expenses')">🧾 المصروفات وحصر البنود</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">
-        <span>💳 أرصدة البنوك والمحافظ والخزنة والاحتياطي</span>
-        <span style="font-size:11px;color:#64748b;">إجمالي المصروفات المسجلة: <strong id="trsTotalExpensesVal" style="color:#dc2626;">0 ج.م</strong></span>
-      </div>
-      <div id="trsAccountsGrid" class="trs-accounts-grid"></div>
-    </div>
+    <!-- القسم الأول: الخزنة وحركاتها -->
+    <div id="trsVaultView">
+      <div class="card" style="background:linear-gradient(135deg,#0f2922,#1e3a8a);color:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:11px;color:#a7f3d0;">إجمالي أرصدة الخزنة والبنوك والمحافظ والاحتياطي (مفصول بدقة عن مديونيات العملاء والموردين)</div>
+            <div id="trsGrandTotal" style="font-size:21px;font-weight:900;color:#34d399;">0 ج.م</div>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <button type="button" onclick="openTreasuryAccountModal()" style="background:#38bdf8;color:#0f172a;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">➕ إضافة بنك / محفظة / حساب</button>
+            <button type="button" onclick="openTreasuryMoveModal('in')" style="background:#10b981;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">📥 إيداع / استلام</button>
+            <button type="button" onclick="openTreasuryMoveModal('out')" style="background:#f59e0b;color:#0f172a;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">📤 سحب / صرف</button>
+            <button type="button" onclick="openTreasuryMoveModal('transfer')" style="background:#8b5cf6;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">🔄 تحويل بين الحسابات</button>
+          </div>
+        </div>
 
-    <div class="card" style="padding:10px;">
-      <div class="toggle-pair" style="margin-bottom:8px;">
-        <button type="button" id="trsSubMovBtn" class="active-pair" onclick="switchTreasurySubTab('moves')">🔄 سجل حركات الخزنة والتحويلات</button>
-        <button type="button" id="trsSubExpBtn" onclick="switchTreasurySubTab('expenses')">🧾 سجل المصروفات</button>
+        <div class="stmt-summary-grid" style="margin-bottom:0;">
+          <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
+            <div class="stmt-kpi-lbl" style="color:#a7f3d0;">💵 درج الكاش والخزنة</div>
+            <div class="stmt-kpi-val" id="trsSumCash" style="color:#34d399;">0 ج.م</div>
+          </div>
+          <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
+            <div class="stmt-kpi-lbl" style="color:#93c5fd;">🏦 البنوك</div>
+            <div class="stmt-kpi-val" id="trsSumBank" style="color:#93c5fd;">0 ج.م</div>
+          </div>
+          <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
+            <div class="stmt-kpi-lbl" style="color:#fca5a5;">📱 فودافون كاش &amp; إنستاباي</div>
+            <div class="stmt-kpi-val" id="trsSumDigital" style="color:#fca5a5;">0 ج.م</div>
+          </div>
+          <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
+            <div class="stmt-kpi-lbl" style="color:#fde68a;">🛡️ استراتيجي / احتياطي</div>
+            <div class="stmt-kpi-val" id="trsSumReserve" style="color:#fde68a;">0 ج.م</div>
+          </div>
+        </div>
       </div>
 
-      <div id="trsMovesPanel">
+      <div class="card">
+        <div class="card-title">
+          <span>💳 أرصدة البنوك والمحافظ والخزنة والاحتياطي</span>
+        </div>
+        <div id="trsAccountsGrid" class="trs-accounts-grid"></div>
+      </div>
+
+      <div class="card" style="padding:10px;">
+        <div style="padding:4px 4px 8px;font-weight:800;font-size:13.5px;color:#0f2922;">🔄 سجل حركات الخزنة والتحويلات</div>
         <input type="text" id="trsMoveSearchInput" class="section-quick-search" placeholder="🔍 بحث في حركات الخزنة بالبنك أو الرقم أو البيان..." oninput="trsPageMoves=1; renderTreasuryMovementsTable();">
         <table>
           <thead>
@@ -1930,9 +1987,63 @@
         </table>
         <div id="pg-trsMoves" class="pagination-bar"></div>
       </div>
+    </div>
 
-      <div id="trsExpensesPanel" style="display:none;">
-        <input type="text" id="trsExpSearchInput" class="section-quick-search" placeholder="🔍 بحث في المصروفات بالبند أو الحساب أو الملاحظات..." oninput="trsPageExp=1; renderExpensesTable();">
+    <!-- القسم الثاني: شاشة المصروفات الكبيرة + حصر البنود والفترات + سجل الحركات -->
+    <div id="trsExpensesView" style="display:none;">
+      <div class="card" style="background:linear-gradient(135deg,#450a0a,#991b1b);color:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div style="font-size:11px;color:#fecaca;">إجمالي المصروفات في الفترة المحددة</div>
+            <div id="expFilteredTotalVal" style="font-size:21px;font-weight:900;color:#fde68a;">0 ج.م</div>
+            <div style="font-size:10.5px;color:#fca5a5;margin-top:2px;">إجمالي المصروفات الكلي: <strong id="trsTotalExpensesVal">0 ج.م</strong></div>
+          </div>
+          <button type="button" onclick="openExpenseModal()" style="background:#34d399;color:#0f2922;border:none;padding:9px 14px;border-radius:10px;font-weight:900;font-size:12.5px;cursor:pointer;">➕ تسجيل مصروف / دفعة بنود</button>
+        </div>
+      </div>
+
+      <!-- حصر البنود والفترات (الشهر الحالي / الشهر اللي فات / آخر 3 شهور / آخر 5 شهور / من-إلى) -->
+      <div class="card">
+        <div class="card-title">
+          <span>📊 حصر المصروفات حسب البند والفترة</span>
+          <span id="expPeriodBadge" style="font-size:11px;color:#059669;font-weight:800;">الفترة: الشهر الحالي</span>
+        </div>
+
+        <div class="sub-filter-bar" id="expPeriodPills">
+          <button type="button" class="filter-pill active" onclick="setExpensePeriod('current_month', this)">📅 الشهر الحالي</button>
+          <button type="button" class="filter-pill" onclick="setExpensePeriod('last_month', this)">🗓️ الشهر اللي فات</button>
+          <button type="button" class="filter-pill" onclick="setExpensePeriod('last_3m', this)">📆 آخر 3 شهور</button>
+          <button type="button" class="filter-pill" onclick="setExpensePeriod('last_5m', this)">🗂️ آخر 5 شهور</button>
+          <button type="button" class="filter-pill" onclick="setExpensePeriod('all', this)">📋 كل الفترات</button>
+        </div>
+
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <span style="font-size:11.5px;font-weight:800;">من:</span>
+          <input type="date" id="expFromDate" onchange="setExpensePeriod('custom', null)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;">
+          <span style="font-size:11.5px;font-weight:800;">إلى:</span>
+          <input type="date" id="expToDate" onchange="setExpensePeriod('custom', null)" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;">
+          <input type="text" id="expItemFilterInput" placeholder="🔍 حصر ببند محدد (مثال: شخصي، كهرباء)..." oninput="renderExpensesTab()" style="flex:1;min-width:160px;padding:6px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12px;font-weight:700;">
+        </div>
+
+        <div class="exp-summary-table-wrap">
+          <div style="font-size:12px;font-weight:900;color:#0f2922;margin-bottom:6px;">📌 ملخص إجمالي كل بند في الفترة المختارة</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align:right;">البند</th>
+                <th>عدد الحركات</th>
+                <th>إجمالي المنصرف</th>
+              </tr>
+            </thead>
+            <tbody id="expBreakdownBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- سجل حركات المصروفات أسفل شاشة الحصر -->
+      <div class="card" style="padding:10px;">
+        <div style="padding:4px 4px 8px;font-weight:800;font-size:13.5px;color:#991b1b;">🧾 سجل حركات المصروفات</div>
+        <input type="text" id="trsExpSearchInput" class="section-quick-search" placeholder="🔍 بحث في سجل الحركات بالبند أو الحساب أو التاريخ..." oninput="trsPageExp=1; renderExpensesTable();">
         <table>
           <thead>
             <tr>
@@ -2287,9 +2398,32 @@
         </div>
       </div>
 
+      <div class="form-group" style="margin-bottom:6px;">
+        <label>طريقة السداد / التحصيل</label>
+        <div class="pay-method-bar" id="uniPayMethodBar">
+          <button type="button" class="pay-method-chip active-pm" data-pm="cash" onclick="selectUniPaymentMethod('cash')">💵 كاش / درج</button>
+          <button type="button" class="pay-method-chip" data-pm="instapay" onclick="selectUniPaymentMethod('instapay')">⚡ إنستاباي</button>
+          <button type="button" class="pay-method-chip" data-pm="wallet" onclick="selectUniPaymentMethod('wallet')">📱 فودافون كاش</button>
+          <button type="button" class="pay-method-chip" data-pm="bank" onclick="selectUniPaymentMethod('bank')">🏦 تحويل بنكي</button>
+          <button type="button" class="pay-method-chip" data-pm="offset" onclick="selectUniPaymentMethod('offset')">⚖️ مقاصة</button>
+        </div>
+      </div>
+
+      <div id="uniPaymentMethodGrid" class="pay-method-equal-grid">
+        <div class="form-group">
+          <label id="uniPmCol1Label">حساب الخزنة / الدرج</label>
+          <select id="uniPmCol1Select"></select>
+          <input type="text" id="uniPmCol1Text" style="display:none;" placeholder="رقم / بيان...">
+        </div>
+        <div class="form-group">
+          <label id="uniPmCol2Label">رقم مرجعي / ملاحظة</label>
+          <input type="text" id="uniPmCol2Text" placeholder="ملاحظة أو رقم مرجع...">
+        </div>
+      </div>
+
       <div class="form-group" style="margin-bottom:10px;">
-        <label>ملاحظات</label>
-        <input type="text" id="uniPayNote" placeholder="كاش / إنستاباي">
+        <label>ملاحظات إضافية</label>
+        <input type="text" id="uniPayNote" placeholder="تفاصيل إضافية للسند...">
       </div>
 
       <button onclick="submitUnifiedPayCollect()" style="width:100%;background:var(--success);color:#fff;border:none;padding:11px;border-radius:10px;font-weight:bold;font-size:14px;cursor:pointer;">💾 تأكيد وحفظ الحركة</button>
@@ -9020,7 +9154,95 @@ ${statusLine}
     showToast('🗑️ تم حذف حركة الخزنة وعكس أثرها');
   }
 
+  let _expBatchDrafts = [];
+
+  function getRecurringExpenseTitles() {
+    const freq = {};
+    expensesList.forEach(e => {
+      const t = String(e.title || '').trim();
+      if (!t) return;
+      const k = normalizeArabic(t);
+      if (!freq[k]) freq[k] = { label: t, count: 0 };
+      freq[k].count++;
+    });
+    return Object.values(freq)
+      .filter(x => x.count >= 1)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+      .map(x => x.label);
+  }
+
+  function renderRecurringExpenseChips() {
+    const wrap = document.getElementById('trsRecurringChipsWrap');
+    const chipsEl = document.getElementById('trsRecurringChips');
+    if (!wrap || !chipsEl) return;
+    const titles = getRecurringExpenseTitles();
+    if (titles.length === 0) {
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = 'block';
+    chipsEl.innerHTML = titles.map(t =>
+      `<button type="button" class="btn-sm" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;" onclick="document.getElementById('trsExpTitle').value='${t.replace(/'/g, "\\'")}';document.getElementById('trsExpAmount').focus();">🔁 ${t}</button>`
+    ).join('');
+  }
+
+  function renderExpenseBatchList() {
+    const el = document.getElementById('trsExpBatchList');
+    if (!el) return;
+    if (_expBatchDrafts.length === 0) {
+      el.innerHTML = '';
+      return;
+    }
+    const totBatch = _expBatchDrafts.reduce((s, r) => s + r.amount, 0);
+    el.innerHTML = `
+      <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:9px;padding:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:800;margin-bottom:6px;color:#0f2922;">
+          <span>بنود مجهزة للحفظ دفعة واحدة (${_expBatchDrafts.length})</span>
+          <span style="color:#dc2626;">الإجمالي: ${totBatch.toLocaleString()} ج.م</span>
+        </div>
+        ${_expBatchDrafts.map((row, idx) => `
+          <div class="pur-cart-item" style="margin-bottom:4px;">
+            <div>
+              <strong>${row.title}</strong> — <span style="color:#dc2626;font-weight:800;">${row.amount.toLocaleString()} ج.م</span>
+              <div style="font-size:10px;color:#64748b;">📅 ${row.date} • ${row.accName}</div>
+            </div>
+            <button type="button" onclick="removeExpenseDraftRow(${idx})" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function addExpenseDraftRow() {
+    const accId = document.getElementById('trsExpAccSelect').value;
+    const title = document.getElementById('trsExpTitle').value.trim();
+    const amount = Number(document.getElementById('trsExpAmount').value) || 0;
+    const dateVal = document.getElementById('trsExpDate').value || new Date().toISOString().split('T')[0];
+
+    if (!accId || !title || amount <= 0) return alert('اختر الحساب واكتب البند والمبلغ الصحيح');
+    const acc = treasuryAccounts.find(a => a.id === accId);
+
+    _expBatchDrafts.push({
+      accId,
+      accName: acc ? acc.name : '',
+      title,
+      amount,
+      date: dateVal
+    });
+
+    document.getElementById('trsExpTitle').value = '';
+    document.getElementById('trsExpAmount').value = '';
+    renderExpenseBatchList();
+  }
+
+  function removeExpenseDraftRow(idx) {
+    _expBatchDrafts.splice(idx, 1);
+    renderExpenseBatchList();
+  }
+
   function openExpenseModal(prefillAccId = '') {
+    _expBatchDrafts = [];
     const sel = document.getElementById('trsExpAccSelect');
     sel.innerHTML = treasuryAccounts.map(a => {
       const meta = getTreasuryTypeMeta(a.type);
@@ -9030,6 +9252,8 @@ ${statusLine}
     document.getElementById('trsExpTitle').value = '';
     document.getElementById('trsExpAmount').value = '';
     document.getElementById('trsExpDate').value = new Date().toISOString().split('T')[0];
+    renderRecurringExpenseChips();
+    renderExpenseBatchList();
     document.getElementById('trsExpenseModal').style.display = 'flex';
   }
 
@@ -9039,25 +9263,45 @@ ${statusLine}
     const amount = Number(document.getElementById('trsExpAmount').value) || 0;
     const dateVal = document.getElementById('trsExpDate').value || new Date().toISOString().split('T')[0];
 
-    if (!accId || !title || amount <= 0) return alert('اختر الحساب واكتب البند والمبلغ الصحيح');
+    const finalRows = [..._expBatchDrafts];
+    if (title && amount > 0) {
+      const acc = treasuryAccounts.find(a => a.id === accId);
+      finalRows.push({
+        accId,
+        accName: acc ? acc.name : '',
+        title,
+        amount,
+        date: dateVal
+      });
+    }
 
-    const acc = treasuryAccounts.find(a => a.id === accId);
-    if (acc) acc.balance = (Number(acc.balance) || 0) - amount;
+    if (finalRows.length === 0) return alert('اختر الحساب واكتب البند والمبلغ الصحيح');
 
-    const expId = 'EXP-' + String(expensesList.length + 1).padStart(4, '0');
-    expensesList.unshift({
-      id: expId,
-      date: dateVal,
-      title,
-      amount,
-      accId,
-      accName: acc ? acc.name : ''
+    let totalSaved = 0;
+    finalRows.forEach(row => {
+      const acc = treasuryAccounts.find(a => a.id === row.accId);
+      if (acc) acc.balance = (Number(acc.balance) || 0) - row.amount;
+      const expId = 'EXP-' + String(expensesList.length + 1).padStart(4, '0') + '-' + Math.floor(Math.random() * 90 + 10);
+      expensesList.unshift({
+        id: expId,
+        date: row.date,
+        title: row.title,
+        amount: row.amount,
+        accId: row.accId,
+        accName: acc ? acc.name : row.accName
+      });
+      totalSaved += row.amount;
     });
 
+    _expBatchDrafts = [];
     document.getElementById('trsExpenseModal').style.display = 'none';
     renderTreasuryTab();
     saveTreasuryState(true);
-    showToast(`✅ تم تسجيل المصروف (${title}) بمبلغ ${amount.toLocaleString()} ج.م`);
+    showToast(
+      finalRows.length > 1
+        ? `✅ تم تسجيل ${finalRows.length} بنود مصروفات بإجمالي ${totalSaved.toLocaleString()} ج.م دفعة واحدة`
+        : `✅ تم تسجيل المصروف (${finalRows[0].title}) بمبلغ ${finalRows[0].amount.toLocaleString()} ج.م`
+    );
   }
 
   function deleteExpenseById(expId) {
@@ -9203,6 +9447,7 @@ ${statusLine}
   const _origOnloadV55 = window.onload;
   window.onload = async function() {
     loadTreasuryState();
+    setExpensePeriod('current_month', document.querySelector('#expPeriodPills .filter-pill'));
     renderTreasuryTab();
     if (typeof _origOnloadV55 === 'function') await _origOnloadV55();
   };
@@ -9211,6 +9456,256 @@ ${statusLine}
   renderAllViews = function() {
     _origRenderAllViewsV55();
     renderTreasuryTab();
+  };
+
+
+  // ============================================================================
+  // 8. طرق الدفع المتساوية في السداد/التحصيل + ربط الخزنة + فصل المصروفات وحصر الفترات
+  // ============================================================================
+  let currentUniPayMethod = 'cash'; // 'cash' | 'instapay' | 'wallet' | 'bank' | 'offset'
+  let currentExpensePeriod = 'current_month'; // 'current_month' | 'last_month' | 'last_3m' | 'last_5m' | 'all' | 'custom'
+
+  function selectUniPaymentMethod(pm) {
+    currentUniPayMethod = pm;
+    document.querySelectorAll('#uniPayMethodBar .pay-method-chip').forEach(btn => {
+      btn.classList.toggle('active-pm', btn.getAttribute('data-pm') === pm);
+    });
+
+    const lbl1 = document.getElementById('uniPmCol1Label');
+    const lbl2 = document.getElementById('uniPmCol2Label');
+    const sel1 = document.getElementById('uniPmCol1Select');
+    const txt1 = document.getElementById('uniPmCol1Text');
+    const txt2 = document.getElementById('uniPmCol2Text');
+
+    sel1.style.display = 'none';
+    txt1.style.display = 'none';
+    txt2.style.display = 'block';
+
+    if (pm === 'cash') {
+      lbl1.innerText = 'درج الكاش / الخزنة';
+      lbl2.innerText = 'بيان / ملاحظة';
+      sel1.style.display = 'block';
+      const cashAccs = treasuryAccounts.filter(a => a.type === 'cash');
+      const pool = cashAccs.length > 0 ? cashAccs : treasuryAccounts;
+      sel1.innerHTML = pool.map(a => `<option value="${a.id}">${a.name} (${Number(a.balance || 0).toLocaleString()})</option>`).join('');
+      txt2.placeholder = 'تحصيل / سداد كاش...';
+    } else if (pm === 'instapay') {
+      lbl1.innerText = 'حساب إنستاباي';
+      lbl2.innerText = 'البنك المرتبط / مرجع';
+      sel1.style.display = 'block';
+      const ipaAccs = treasuryAccounts.filter(a => a.type === 'instapay' || a.type === 'bank');
+      const pool = ipaAccs.length > 0 ? ipaAccs : treasuryAccounts;
+      sel1.innerHTML = pool.map(a => `<option value="${a.id}">${a.name} (${Number(a.balance || 0).toLocaleString()})</option>`).join('');
+      const chosen = pool.find(x => x.id === sel1.value);
+      const linkedB = (chosen && chosen.linkedBankId) ? treasuryAccounts.find(b => b.id === chosen.linkedBankId) : null;
+      txt2.value = linkedB ? `بنك: ${linkedB.name}` : '';
+      txt2.placeholder = 'اسم البنك المرتبط أو رقم المرجع...';
+    } else if (pm === 'wallet') {
+      lbl1.innerText = 'محفظة فودافون كاش';
+      lbl2.innerText = 'الرقم / البنك المرتبط';
+      sel1.style.display = 'block';
+      const walAccs = treasuryAccounts.filter(a => a.type === 'wallet');
+      const pool = walAccs.length > 0 ? walAccs : treasuryAccounts;
+      sel1.innerHTML = pool.map(a => `<option value="${a.id}">${a.name}${a.phone ? ' (' + a.phone + ')' : ''}</option>`).join('');
+      const chosen = pool.find(x => x.id === sel1.value);
+      const linkedB = (chosen && chosen.linkedBankId) ? treasuryAccounts.find(b => b.id === chosen.linkedBankId) : null;
+      txt2.value = (chosen && chosen.phone ? chosen.phone : '') + (linkedB ? ` | بنك: ${linkedB.name}` : '');
+      txt2.placeholder = 'رقم المحفظة أو البنك المرتبط...';
+    } else if (pm === 'bank') {
+      lbl1.innerText = 'الحساب البنكي';
+      lbl2.innerText = 'رقم المرجع / الفرع';
+      sel1.style.display = 'block';
+      const bankAccs = treasuryAccounts.filter(a => a.type === 'bank');
+      const pool = bankAccs.length > 0 ? bankAccs : treasuryAccounts;
+      sel1.innerHTML = pool.map(a => `<option value="${a.id}">${a.name} (${Number(a.balance || 0).toLocaleString()})</option>`).join('');
+      txt2.value = '';
+      txt2.placeholder = 'رقم التحويل أو الفرع...';
+    } else if (pm === 'offset') {
+      lbl1.innerText = 'نوع التسوية';
+      lbl2.innerText = 'بيان المقاصة (بدون خزنة)';
+      txt1.style.display = 'block';
+      txt1.value = '⚖️ مقاصة حساب (بدون حركة خزنة)';
+      txt1.readOnly = true;
+      txt2.value = '';
+      txt2.placeholder = 'مثال: تسوية حساب متبادل...';
+    }
+  }
+
+  function applyUniPaymentToTreasury(amount, targetName, extraNote) {
+    const amt = Number(amount) || 0;
+    if (amt <= 0) return extraNote;
+    if (currentUniPayMethod === 'offset') {
+      const col2 = (document.getElementById('uniPmCol2Text') || {}).value || '';
+      return ['⚖️ مقاصة', col2, extraNote].filter(Boolean).join(' - ');
+    }
+
+    const selId = (document.getElementById('uniPmCol1Select') || {}).value || '';
+    const col2Val = ((document.getElementById('uniPmCol2Text') || {}).value || '').trim();
+    const pmNames = { cash: 'كاش / درج', instapay: 'إنستاباي', wallet: 'فودافون كاش', bank: 'تحويل بنكي' };
+    const pmLabel = pmNames[currentUniPayMethod] || 'خزنة';
+
+    let acc = treasuryAccounts.find(a => a.id === selId);
+    if (!acc) {
+      acc = treasuryAccounts.find(a => a.type === currentUniPayMethod) || treasuryAccounts[0];
+    }
+
+    if (acc) {
+      const isCollection = (unifiedPayType === 'client');
+      acc.balance = (Number(acc.balance) || 0) + (isCollection ? amt : -amt);
+      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+      const moveId = 'TMV-' + String(treasuryMovements.length + 1).padStart(4, '0');
+      treasuryMovements.unshift({
+        id: moveId,
+        date: nowStr,
+        kind: isCollection ? 'in' : 'out',
+        kindLabel: isCollection ? `📥 تحصيل (${pmLabel})` : `📤 سداد (${pmLabel})`,
+        fromId: isCollection ? '' : acc.id,
+        toId: isCollection ? acc.id : '',
+        fromName: isCollection ? (targetName || 'عميل') : acc.name,
+        toName: isCollection ? acc.name : (targetName || 'مورد'),
+        amount: amt,
+        note: [col2Val, extraNote].filter(Boolean).join(' - ')
+      });
+      renderTreasuryTab();
+      saveTreasuryState(true);
+    }
+
+    return [pmLabel, acc ? acc.name : '', col2Val, extraNote].filter(Boolean).join(' • ');
+  }
+
+  const _origOpenUniPayV57 = openUnifiedPayCollectModal;
+  openUnifiedPayCollectModal = function(type = 'client', targetName = '', amount = '', linkedAlert = null) {
+    _origOpenUniPayV57(type, targetName, amount, linkedAlert);
+    selectUniPaymentMethod('cash');
+    const c2 = document.getElementById('uniPmCol2Text');
+    if (c2) c2.value = '';
+  };
+
+  const _origSubmitUniPayV57 = submitUnifiedPayCollect;
+  submitUnifiedPayCollect = function() {
+    const editId = document.getElementById('editPaymentId').value;
+    const targetName = cleanEgyptianPhone(document.getElementById('uniTargetInput').value.trim());
+    const amount = Number(document.getElementById('uniPayAmount').value) || 0;
+    const rawNote = document.getElementById('uniPayNote').value.trim();
+
+    if (!editId && targetName && amount > 0) {
+      const mergedNote = applyUniPaymentToTreasury(amount, targetName, rawNote);
+      document.getElementById('uniPayNote').value = mergedNote;
+    }
+    return _origSubmitUniPayV57();
+  };
+
+  function switchTreasuryTopView(view) {
+    const isExp = (view === 'expenses');
+    const vDiv = document.getElementById('trsVaultView');
+    const eDiv = document.getElementById('trsExpensesView');
+    const bV = document.getElementById('trsMainBtnVault');
+    const bE = document.getElementById('trsMainBtnExpenses');
+    if (vDiv) vDiv.style.display = isExp ? 'none' : 'block';
+    if (eDiv) eDiv.style.display = isExp ? 'block' : 'none';
+    if (bV) bV.classList.toggle('active-pair', !isExp);
+    if (bE) bE.classList.toggle('active-pair', isExp);
+    if (isExp) renderExpensesTab();
+    else renderTreasuryTab();
+  }
+
+  function setExpensePeriod(periodKey, btn) {
+    currentExpensePeriod = periodKey;
+    if (btn) {
+      document.querySelectorAll('#expPeriodPills .filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    if (periodKey === 'current_month') {
+      const startM = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      document.getElementById('expFromDate').value = startM;
+      document.getElementById('expToDate').value = todayStr;
+    } else if (periodKey === 'last_month') {
+      const startLast = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+      const endLast = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+      document.getElementById('expFromDate').value = startLast;
+      document.getElementById('expToDate').value = endLast;
+    } else if (periodKey === 'last_3m') {
+      const start3 = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
+      document.getElementById('expFromDate').value = start3;
+      document.getElementById('expToDate').value = todayStr;
+    } else if (periodKey === 'last_5m') {
+      const start5 = new Date(now.getFullYear(), now.getMonth() - 4, 1).toISOString().split('T')[0];
+      document.getElementById('expFromDate').value = start5;
+      document.getElementById('expToDate').value = todayStr;
+    } else if (periodKey === 'all') {
+      document.getElementById('expFromDate').value = '';
+      document.getElementById('expToDate').value = '';
+    }
+
+    renderExpensesTab();
+  }
+
+  function getFilteredExpensesForPeriod() {
+    const fromD = (document.getElementById('expFromDate') || {}).value || '';
+    const toD = (document.getElementById('expToDate') || {}).value || '';
+    const itemQ = normalizeArabic((document.getElementById('expItemFilterInput') || {}).value || '');
+
+    return expensesList.filter(e => {
+      const d = String(e.date || '').split(' ')[0];
+      if (fromD && d < fromD) return false;
+      if (toD && d > toD) return false;
+      if (itemQ && !normalizeArabic(`${e.title || ''} ${e.accName || ''}`).includes(itemQ)) return false;
+      return true;
+    });
+  }
+
+  function renderExpensesTab() {
+    const allExpSum = expensesList.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const totAllEl = document.getElementById('trsTotalExpensesVal');
+    if (totAllEl) totAllEl.innerText = `${allExpSum.toLocaleString()} ج.م`;
+
+    const periodRows = getFilteredExpensesForPeriod();
+    const periodSum = periodRows.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const filtTotEl = document.getElementById('expFilteredTotalVal');
+    if (filtTotEl) filtTotEl.innerText = `${periodSum.toLocaleString()} ج.م`;
+
+    const labelsMap = {
+      current_month: 'الشهر الحالي',
+      last_month: 'الشهر اللي فات',
+      last_3m: 'آخر 3 شهور',
+      last_5m: 'آخر 5 شهور',
+      all: 'كل الفترات',
+      custom: 'فترة مخصصة'
+    };
+    const bEl = document.getElementById('expPeriodBadge');
+    if (bEl) bEl.innerText = `الفترة: ${labelsMap[currentExpensePeriod] || 'محددة'}`;
+
+    const byItem = {};
+    periodRows.forEach(e => {
+      const title = String(e.title || 'بند عام').trim();
+      const key = normalizeArabic(title);
+      if (!byItem[key]) byItem[key] = { name: title, count: 0, total: 0 };
+      byItem[key].count++;
+      byItem[key].total += (Number(e.amount) || 0);
+    });
+
+    const sortedItems = Object.values(byItem).sort((a, b) => b.total - a.total);
+    const bdBody = document.getElementById('expBreakdownBody');
+    if (bdBody) {
+      bdBody.innerHTML = sortedItems.map(it => `
+        <tr>
+          <td style="text-align:right;font-weight:800;">${it.name}</td>
+          <td>${it.count}</td>
+          <td style="font-weight:900;color:#dc2626;">${it.total.toLocaleString()} ج.م</td>
+        </tr>
+      `).join('') || `<tr><td colspan="3" style="color:#64748b;padding:10px;">لا توجد مصروفات في هذه الفترة</td></tr>`;
+    }
+
+    renderExpensesTable();
+  }
+
+  const _origRenderTreasuryTabV57 = renderTreasuryTab;
+  renderTreasuryTab = function() {
+    _origRenderTreasuryTabV57();
+    renderExpensesTab();
   };
 
 </script>
@@ -9523,11 +10018,11 @@ ${statusLine}
     </div>
   </div>
 
-  <!-- 13. نافذة تسجيل مصروف -->
+  <!-- 13. نافذة تسجيل مصروف (يدعم البند المتكرر وتسجيل دفعة واحدة أو عدة بنود مرة واحدة) -->
   <div id="trsExpenseModal" class="modal-overlay">
-    <div class="modal-box" style="max-width:460px;">
+    <div class="modal-box" style="max-width:490px;">
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding-bottom:8px;margin-bottom:10px;">
-        <h3 style="margin:0;color:#dc2626;font-size:15px;">🧾 تسجيل مصروف جديد</h3>
+        <h3 style="margin:0;color:#dc2626;font-size:15px;">🧾 تسجيل مصروف</h3>
         <button type="button" onclick="document.getElementById('trsExpenseModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
       </div>
 
@@ -9536,22 +10031,33 @@ ${statusLine}
         <select id="trsExpAccSelect"></select>
       </div>
 
+      <div id="trsRecurringChipsWrap" style="display:none;margin-bottom:8px;">
+        <div style="font-size:10.5px;font-weight:800;color:#475569;margin-bottom:4px;">🔁 بنود مصروفات متكررة سابقة (اضغط لاختيار البند بسرعة):</div>
+        <div id="trsRecurringChips" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+      </div>
+
       <div class="form-group" style="margin-bottom:8px;">
         <label>بند المصروف / البيان</label>
         <input type="text" id="trsExpTitle" placeholder="مثال: إيجار / كهرباء / شحن / مواصلات...">
       </div>
 
-      <div class="form-group" style="margin-bottom:8px;">
-        <label>المبلغ (ج.م)</label>
-        <input type="number" id="trsExpAmount" step="any" placeholder="0" style="font-size:16px;font-weight:900;text-align:center;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div class="form-group">
+          <label>المبلغ (ج.م)</label>
+          <input type="number" id="trsExpAmount" step="any" placeholder="0" style="font-size:16px;font-weight:900;text-align:center;">
+        </div>
+        <div class="form-group">
+          <label>التاريخ</label>
+          <input type="date" id="trsExpDate">
+        </div>
       </div>
 
-      <div class="form-group" style="margin-bottom:10px;">
-        <label>التاريخ</label>
-        <input type="date" id="trsExpDate">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+        <button type="button" onclick="addExpenseDraftRow()" style="flex:1;min-width:130px;background:#f1f5f9;color:#0f2922;border:1.5px solid #cbd5e1;padding:10px;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;">➕ إضافة للقائمة</button>
+        <button type="button" onclick="submitExpenseModal()" style="flex:1.6;min-width:160px;background:#dc2626;color:#fff;border:none;padding:10px;border-radius:10px;font-weight:800;font-size:13.5px;cursor:pointer;">💾 حفظ واعتماد الكل مرة واحدة</button>
       </div>
 
-      <button type="button" onclick="submitExpenseModal()" style="width:100%;background:#dc2626;color:#fff;border:none;padding:11px;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;">💾 حفظ المصروف</button>
+      <div id="trsExpBatchList" style="margin-top:10px;"></div>
     </div>
   </div>
 
