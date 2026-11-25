@@ -1392,21 +1392,25 @@
 
 
     .pay-method-bar {
-      display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 4px;
       margin-bottom: 8px;
+      width: 100%;
     }
     .pay-method-chip {
       background: #f1f5f9;
       color: #334155;
       border: 1px solid #cbd5e1;
-      padding: 6px 9px;
+      padding: 7px 2px;
       border-radius: 8px;
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 800;
       cursor: pointer;
       white-space: nowrap;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
       transition: all 0.12s;
     }
     .pay-method-chip.active-pm {
@@ -1488,7 +1492,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v5.8</span>
+          <span>ERP Pro v5.9</span>
         </div>
         <button id="topBellBtn" class="top-bell-btn" title="مركز التنبيهات المستحقة" onclick="openAlertsFromTopBell()">
           <span>🔔</span>
@@ -2401,22 +2405,22 @@
       <div class="form-group" style="margin-bottom:6px;">
         <label>طريقة السداد / التحصيل</label>
         <div class="pay-method-bar" id="uniPayMethodBar">
-          <button type="button" class="pay-method-chip active-pm" data-pm="cash" onclick="selectUniPaymentMethod('cash')">💵 كاش / درج</button>
+          <button type="button" class="pay-method-chip active-pm" data-pm="cash" onclick="selectUniPaymentMethod('cash')">💵 كاش</button>
           <button type="button" class="pay-method-chip" data-pm="instapay" onclick="selectUniPaymentMethod('instapay')">⚡ إنستاباي</button>
-          <button type="button" class="pay-method-chip" data-pm="wallet" onclick="selectUniPaymentMethod('wallet')">📱 فودافون كاش</button>
-          <button type="button" class="pay-method-chip" data-pm="bank" onclick="selectUniPaymentMethod('bank')">🏦 تحويل بنكي</button>
-          <button type="button" class="pay-method-chip" data-pm="offset" onclick="selectUniPaymentMethod('offset')">⚖️ مقاصة</button>
+          <button type="button" class="pay-method-chip" data-pm="wallet" onclick="selectUniPaymentMethod('wallet')">📱 فودافون</button>
+          <button type="button" class="pay-method-chip" data-pm="bank" onclick="selectUniPaymentMethod('bank')">🏦 بنكي</button>
+          <button type="button" class="pay-method-chip" data-pm="offset" style="background:#fff7ed;color:#c2410c;border-color:#fdba74;" onclick="transferUnifiedPayToOffset()">⚖️ مقاصة</button>
         </div>
       </div>
 
       <div id="uniPaymentMethodGrid" class="pay-method-equal-grid">
         <div class="form-group">
-          <label id="uniPmCol1Label">حساب الخزنة / الدرج</label>
-          <select id="uniPmCol1Select"></select>
+          <label id="uniPmCol1Label">درج الكاش / الخزنة</label>
+          <select id="uniPmCol1Select" onchange="onUniPmAccountChange()"></select>
           <input type="text" id="uniPmCol1Text" style="display:none;" placeholder="رقم / بيان...">
         </div>
         <div class="form-group">
-          <label id="uniPmCol2Label">رقم مرجعي / ملاحظة</label>
+          <label id="uniPmCol2Label">بيان / ملاحظة</label>
           <input type="text" id="uniPmCol2Text" placeholder="ملاحظة أو رقم مرجع...">
         </div>
       </div>
@@ -7376,7 +7380,7 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
   // ============================================================================
   // 4. نظام المقاصة والتصفية والتحويل المباشر بين عميل ومورد (5-Way Sync)
   // ============================================================================
-  function openOffsetModal(prefillClient = '', prefillSupplier = '') {
+  function openOffsetModal(prefillClient = '', prefillSupplier = '', prefillAmount = '', prefillNote = '') {
     ensureAdminUnlockedThenRun('أدخل الرقم السري لفتح شاشة المقاصة والتصفية', () => {
       const cliSel = document.getElementById('offsetClientSelect');
       const supSel = document.getElementById('offsetSupplierSelect');
@@ -7407,14 +7411,29 @@ ${Number(inv.remaining) > 0 ? `🔴 *المتبقي منها:* ${Number(inv.rema
         chipsWrap.style.display = 'none';
       }
 
-      document.getElementById('offsetAmountInput').value = '';
-      document.getElementById('offsetNoteInput').value = '';
-      if (prefillClient) cliSel.value = prefillClient;
-      if (prefillSupplier) supSel.value = prefillSupplier;
+      document.getElementById('offsetAmountInput').value = (Number(prefillAmount) > 0) ? Number(prefillAmount) : '';
+      document.getElementById('offsetNoteInput').value = String(prefillNote || '').trim();
+
+      if (prefillClient) {
+        const matchedCli = clients.find(c => c.name === prefillClient || isSameEntityTarget(c.name, prefillClient));
+        if (matchedCli) cliSel.value = matchedCli.name;
+        if (!prefillSupplier) {
+          const mutualSup = suppliersList.find(s => isSameEntityTarget(s.name, prefillClient));
+          if (mutualSup) supSel.value = mutualSup.name;
+        }
+      }
+      if (prefillSupplier) {
+        const matchedSup = suppliersList.find(s => s.name === prefillSupplier || isSameEntityTarget(s.name, prefillSupplier));
+        if (matchedSup) supSel.value = matchedSup.name;
+        if (!prefillClient) {
+          const mutualCli = clients.find(c => isSameEntityTarget(c.name, prefillSupplier));
+          if (mutualCli) cliSel.value = mutualCli.name;
+        }
+      }
       if (!prefillClient && !prefillSupplier && mutuals.length === 1) {
         cliSel.value = mutuals[0].cli.name;
         supSel.value = mutuals[0].sup.name;
-        fillSuggestedOffsetAmt();
+        if (!prefillAmount) fillSuggestedOffsetAmt();
       }
       updateOffsetPreview();
       document.getElementById('offsetModal').style.display = 'flex';
@@ -9419,7 +9438,8 @@ ${statusLine}
     const tbody = document.getElementById('trsExpensesBody');
     if (!tbody) return;
     const q = normalizeArabic((document.getElementById('trsExpSearchInput') || {}).value || '');
-    const filtered = expensesList.filter(e =>
+    const baseList = (typeof getFilteredExpensesForPeriod === 'function') ? getFilteredExpensesForPeriod() : expensesList;
+    const filtered = baseList.filter(e =>
       !q || normalizeArabic(`${e.date} ${e.title} ${e.accName}`).includes(q)
     );
 
@@ -9465,7 +9485,43 @@ ${statusLine}
   let currentUniPayMethod = 'cash'; // 'cash' | 'instapay' | 'wallet' | 'bank' | 'offset'
   let currentExpensePeriod = 'current_month'; // 'current_month' | 'last_month' | 'last_3m' | 'last_5m' | 'all' | 'custom'
 
+  function transferUnifiedPayToOffset() {
+    const targetName = cleanEgyptianPhone((document.getElementById('uniTargetInput') || {}).value || '').trim();
+    const amt = Number((document.getElementById('uniPayAmount') || {}).value) || 0;
+    const note = ((document.getElementById('uniPayNote') || {}).value || '').trim();
+    document.getElementById('unifiedPayModal').style.display = 'none';
+    if (unifiedPayType === 'supplier') {
+      openOffsetModal('', targetName, amt > 0 ? amt : '', note);
+    } else {
+      openOffsetModal(targetName, '', amt > 0 ? amt : '', note);
+    }
+  }
+
+  function onUniPmAccountChange() {
+    const sel1 = document.getElementById('uniPmCol1Select');
+    const txt2 = document.getElementById('uniPmCol2Text');
+    if (!sel1 || !txt2) return;
+    const chosen = treasuryAccounts.find(a => a.id === sel1.value);
+    if (!chosen) {
+      txt2.value = '';
+      return;
+    }
+    const linkedB = chosen.linkedBankId ? treasuryAccounts.find(b => b.id === chosen.linkedBankId) : null;
+    if (currentUniPayMethod === 'instapay') {
+      txt2.value = linkedB ? `🏦 ${linkedB.name} (رصيد: ${Number(linkedB.balance || 0).toLocaleString()} ج.م)` : 'بدون بنك مربوط';
+    } else if (currentUniPayMethod === 'wallet') {
+      const parts = [];
+      if (chosen.phone) parts.push(`📞 ${chosen.phone}`);
+      if (linkedB) parts.push(`🏦 ${linkedB.name}`);
+      txt2.value = parts.join(' | ');
+    }
+  }
+
   function selectUniPaymentMethod(pm) {
+    if (pm === 'offset') {
+      transferUnifiedPayToOffset();
+      return;
+    }
     currentUniPayMethod = pm;
     document.querySelectorAll('#uniPayMethodBar .pay-method-chip').forEach(btn => {
       btn.classList.toggle('active-pm', btn.getAttribute('data-pm') === pm);
@@ -9477,100 +9533,111 @@ ${statusLine}
     const txt1 = document.getElementById('uniPmCol1Text');
     const txt2 = document.getElementById('uniPmCol2Text');
 
-    sel1.style.display = 'none';
+    sel1.style.display = 'block';
     txt1.style.display = 'none';
     txt2.style.display = 'block';
+    txt2.readOnly = false;
 
     if (pm === 'cash') {
       lbl1.innerText = 'درج الكاش / الخزنة';
       lbl2.innerText = 'بيان / ملاحظة';
-      sel1.style.display = 'block';
       const cashAccs = treasuryAccounts.filter(a => a.type === 'cash');
-      const pool = cashAccs.length > 0 ? cashAccs : treasuryAccounts;
-      sel1.innerHTML = pool.map(a => `<option value="${a.id}">${a.name} (${Number(a.balance || 0).toLocaleString()})</option>`).join('');
+      if (cashAccs.length > 0) {
+        sel1.innerHTML = cashAccs.map(a => `<option value="${a.id}">${a.name} (${Number(a.balance || 0).toLocaleString()} ج.م)</option>`).join('');
+      } else {
+        sel1.innerHTML = `<option value="">-- لا يوجد درج كاش (أضفه من الخزنة) --</option>`;
+      }
+      txt2.value = '';
       txt2.placeholder = 'تحصيل / سداد كاش...';
     } else if (pm === 'instapay') {
-      lbl1.innerText = 'حساب إنستاباي';
-      lbl2.innerText = 'البنك المرتبط / مرجع';
-      sel1.style.display = 'block';
-      const ipaAccs = treasuryAccounts.filter(a => a.type === 'instapay' || a.type === 'bank');
-      const pool = ipaAccs.length > 0 ? ipaAccs : treasuryAccounts;
-      sel1.innerHTML = pool.map(a => `<option value="${a.id}">${a.name} (${Number(a.balance || 0).toLocaleString()})</option>`).join('');
-      const chosen = pool.find(x => x.id === sel1.value);
-      const linkedB = (chosen && chosen.linkedBankId) ? treasuryAccounts.find(b => b.id === chosen.linkedBankId) : null;
-      txt2.value = linkedB ? `بنك: ${linkedB.name}` : '';
-      txt2.placeholder = 'اسم البنك المرتبط أو رقم المرجع...';
+      lbl1.innerText = 'حسابات إنستاباي';
+      lbl2.innerText = 'البنك المربوط به';
+      const ipaAccs = treasuryAccounts.filter(a => a.type === 'instapay');
+      if (ipaAccs.length > 0) {
+        sel1.innerHTML = ipaAccs.map(a => {
+          const lb = a.linkedBankId ? treasuryAccounts.find(b => b.id === a.linkedBankId) : null;
+          const bankTag = lb ? ` ⬅️ 🏦 ${lb.name}` : ' (بدون بنك مربوط)';
+          return `<option value="${a.id}">⚡ ${a.name}${bankTag}</option>`;
+        }).join('');
+      } else {
+        sel1.innerHTML = `<option value="">-- لا يوجد حساب إنستاباي (أضفه من الخزنة) --</option>`;
+      }
+      txt2.readOnly = true;
+      txt2.placeholder = 'البنك المربوط بحساب إنستاباي...';
+      onUniPmAccountChange();
     } else if (pm === 'wallet') {
       lbl1.innerText = 'محفظة فودافون كاش';
       lbl2.innerText = 'الرقم / البنك المرتبط';
-      sel1.style.display = 'block';
       const walAccs = treasuryAccounts.filter(a => a.type === 'wallet');
-      const pool = walAccs.length > 0 ? walAccs : treasuryAccounts;
-      sel1.innerHTML = pool.map(a => `<option value="${a.id}">${a.name}${a.phone ? ' (' + a.phone + ')' : ''}</option>`).join('');
-      const chosen = pool.find(x => x.id === sel1.value);
-      const linkedB = (chosen && chosen.linkedBankId) ? treasuryAccounts.find(b => b.id === chosen.linkedBankId) : null;
-      txt2.value = (chosen && chosen.phone ? chosen.phone : '') + (linkedB ? ` | بنك: ${linkedB.name}` : '');
+      if (walAccs.length > 0) {
+        sel1.innerHTML = walAccs.map(a => {
+          const lb = a.linkedBankId ? treasuryAccounts.find(b => b.id === a.linkedBankId) : null;
+          const ph = a.phone ? ` (${a.phone})` : '';
+          const bankTag = lb ? ` ⬅️ 🏦 ${lb.name}` : '';
+          return `<option value="${a.id}">📱 ${a.name}${ph}${bankTag}</option>`;
+        }).join('');
+      } else {
+        sel1.innerHTML = `<option value="">-- لا توجد محفظة فودافون كاش (أضفها من الخزنة) --</option>`;
+      }
       txt2.placeholder = 'رقم المحفظة أو البنك المرتبط...';
+      onUniPmAccountChange();
     } else if (pm === 'bank') {
       lbl1.innerText = 'الحساب البنكي';
       lbl2.innerText = 'رقم المرجع / الفرع';
-      sel1.style.display = 'block';
       const bankAccs = treasuryAccounts.filter(a => a.type === 'bank');
-      const pool = bankAccs.length > 0 ? bankAccs : treasuryAccounts;
-      sel1.innerHTML = pool.map(a => `<option value="${a.id}">${a.name} (${Number(a.balance || 0).toLocaleString()})</option>`).join('');
+      if (bankAccs.length > 0) {
+        sel1.innerHTML = bankAccs.map(a => `<option value="${a.id}">🏦 ${a.name} (${Number(a.balance || 0).toLocaleString()} ج.م)</option>`).join('');
+      } else {
+        sel1.innerHTML = `<option value="">-- لا يوجد حساب بنكي (أضفه من الخزنة) --</option>`;
+      }
       txt2.value = '';
       txt2.placeholder = 'رقم التحويل أو الفرع...';
-    } else if (pm === 'offset') {
-      lbl1.innerText = 'نوع التسوية';
-      lbl2.innerText = 'بيان المقاصة (بدون خزنة)';
-      txt1.style.display = 'block';
-      txt1.value = '⚖️ مقاصة حساب (بدون حركة خزنة)';
-      txt1.readOnly = true;
-      txt2.value = '';
-      txt2.placeholder = 'مثال: تسوية حساب متبادل...';
     }
   }
 
   function applyUniPaymentToTreasury(amount, targetName, extraNote) {
     const amt = Number(amount) || 0;
-    if (amt <= 0) return extraNote;
-    if (currentUniPayMethod === 'offset') {
-      const col2 = (document.getElementById('uniPmCol2Text') || {}).value || '';
-      return ['⚖️ مقاصة', col2, extraNote].filter(Boolean).join(' - ');
-    }
+    if (amt <= 0) return { ok: true, note: extraNote };
 
     const selId = (document.getElementById('uniPmCol1Select') || {}).value || '';
     const col2Val = ((document.getElementById('uniPmCol2Text') || {}).value || '').trim();
     const pmNames = { cash: 'كاش / درج', instapay: 'إنستاباي', wallet: 'فودافون كاش', bank: 'تحويل بنكي' };
     const pmLabel = pmNames[currentUniPayMethod] || 'خزنة';
 
-    let acc = treasuryAccounts.find(a => a.id === selId);
+    const acc = treasuryAccounts.find(a => a.id === selId);
     if (!acc) {
-      acc = treasuryAccounts.find(a => a.type === currentUniPayMethod) || treasuryAccounts[0];
+      alert(`⚠️ لم يتم اختيار حساب (${pmLabel}) صالح — أضف الحساب أولاً من تبويب الخزنة أو اختر طريقة دفع أخرى.`);
+      return { ok: false, note: extraNote };
     }
 
-    if (acc) {
-      const isCollection = (unifiedPayType === 'client');
-      acc.balance = (Number(acc.balance) || 0) + (isCollection ? amt : -amt);
-      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
-      const moveId = 'TMV-' + String(treasuryMovements.length + 1).padStart(4, '0');
-      treasuryMovements.unshift({
-        id: moveId,
-        date: nowStr,
-        kind: isCollection ? 'in' : 'out',
-        kindLabel: isCollection ? `📥 تحصيل (${pmLabel})` : `📤 سداد (${pmLabel})`,
-        fromId: isCollection ? '' : acc.id,
-        toId: isCollection ? acc.id : '',
-        fromName: isCollection ? (targetName || 'عميل') : acc.name,
-        toName: isCollection ? acc.name : (targetName || 'مورد'),
-        amount: amt,
-        note: [col2Val, extraNote].filter(Boolean).join(' - ')
-      });
-      renderTreasuryTab();
-      saveTreasuryState(true);
-    }
+    const isCollection = (unifiedPayType === 'client');
+    const linkedBank = (acc.type === 'instapay' && acc.linkedBankId)
+      ? treasuryAccounts.find(b => b.id === acc.linkedBankId)
+      : null;
 
-    return [pmLabel, acc ? acc.name : '', col2Val, extraNote].filter(Boolean).join(' • ');
+    // إنستاباي المربوط على بنك يسمّع مباشرة في رصيد البنك المربوط بدون ازدواجية
+    const targetAccForBalance = linkedBank || acc;
+    targetAccForBalance.balance = (Number(targetAccForBalance.balance) || 0) + (isCollection ? amt : -amt);
+
+    const displayAccLabel = linkedBank ? `${acc.name} ⬅️ ${linkedBank.name}` : acc.name;
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const moveId = 'TMV-' + String(treasuryMovements.length + 1).padStart(4, '0');
+    treasuryMovements.unshift({
+      id: moveId,
+      date: nowStr,
+      kind: isCollection ? 'in' : 'out',
+      kindLabel: isCollection ? `📥 تحصيل (${pmLabel})` : `📤 سداد (${pmLabel})`,
+      fromId: isCollection ? '' : targetAccForBalance.id,
+      toId: isCollection ? targetAccForBalance.id : '',
+      fromName: isCollection ? (targetName || 'عميل') : displayAccLabel,
+      toName: isCollection ? displayAccLabel : (targetName || 'مورد'),
+      amount: amt,
+      note: [col2Val, extraNote].filter(Boolean).join(' - ')
+    });
+    renderTreasuryTab();
+    saveTreasuryState(true);
+
+    return { ok: true, note: [pmLabel, displayAccLabel, extraNote].filter(Boolean).join(' • ') };
   }
 
   const _origOpenUniPayV57 = openUnifiedPayCollectModal;
@@ -9589,8 +9656,9 @@ ${statusLine}
     const rawNote = document.getElementById('uniPayNote').value.trim();
 
     if (!editId && targetName && amount > 0) {
-      const mergedNote = applyUniPaymentToTreasury(amount, targetName, rawNote);
-      document.getElementById('uniPayNote').value = mergedNote;
+      const res = applyUniPaymentToTreasury(amount, targetName, rawNote);
+      if (!res || !res.ok) return;
+      document.getElementById('uniPayNote').value = res.note;
     }
     return _origSubmitUniPayV57();
   };
