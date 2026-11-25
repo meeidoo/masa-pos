@@ -1355,6 +1355,41 @@
       background: #ffffff;
     }
 
+
+    .trs-accounts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .trs-acc-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-right: 4px solid #0d9488;
+      border-radius: 11px;
+      padding: 11px 12px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .trs-acc-card.kind-bank { border-right-color: #1d4ed8; }
+    .trs-acc-card.kind-wallet { border-right-color: #dc2626; background: #fffafa; }
+    .trs-acc-card.kind-instapay { border-right-color: #7c3aed; background: #faf5ff; }
+    .trs-acc-card.kind-cash { border-right-color: #059669; background: #f0fdf4; }
+    .trs-acc-card.kind-reserve { border-right-color: #d97706; background: #fffbeb; }
+    .trs-acc-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .trs-acc-name { font-weight: 900; font-size: 13.5px; color: #0f172a; }
+    .trs-acc-sub { font-size: 10.5px; color: #475569; font-weight: 700; margin-top: 2px; }
+    .trs-acc-bal { font-size: 16.5px; font-weight: 900; color: #0f2922; }
+    .trs-acc-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+
   </style>
 </head>
 <body>
@@ -1398,7 +1433,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v5.4</span>
+          <span>ERP Pro v5.5</span>
         </div>
         <button id="topBellBtn" class="top-bell-btn" title="مركز التنبيهات المستحقة" onclick="openAlertsFromTopBell()">
           <span>🔔</span>
@@ -1427,6 +1462,9 @@
         </button>
         <button class="nav-tab" data-tab="suppliers" onclick="requestAdminTab('suppliers', this)">
           <span>🏭</span><span>الموردين والصيانة</span>
+        </button>
+        <button class="nav-tab" data-tab="treasury" onclick="requestAdminTab('treasury', this)">
+          <span>🏦</span><span>الخزنة والمصروفات</span>
         </button>
         <button class="nav-tab" data-tab="reports" onclick="requestAdminTab('reports', this)">
           <span>📊</span><span>التقارير والأرباح</span>
@@ -1826,7 +1864,92 @@
     </div>
   </div>
 
-  <!-- 6. التقارير -->
+    <!-- 5.5 الخزنة والحسابات والمصروفات (مستقل تماماً عن أرصدة العملاء والموردين) -->
+  <div id="tab-treasury" class="tab-content">
+    <div class="card" style="background:linear-gradient(135deg,#0f2922,#1e3a8a);color:#fff;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:11px;color:#a7f3d0;">إجمالي أرصدة الخزنة والبنوك والمحافظ والاحتياطي (مفصول بدقة عن مديونيات العملاء والموردين)</div>
+          <div id="trsGrandTotal" style="font-size:21px;font-weight:900;color:#34d399;">0 ج.م</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button type="button" onclick="openTreasuryAccountModal()" style="background:#38bdf8;color:#0f172a;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">➕ إضافة بنك / محفظة / حساب</button>
+          <button type="button" onclick="openTreasuryMoveModal('in')" style="background:#10b981;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">📥 إيداع / استلام</button>
+          <button type="button" onclick="openTreasuryMoveModal('out')" style="background:#f59e0b;color:#0f172a;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">📤 سحب / صرف</button>
+          <button type="button" onclick="openTreasuryMoveModal('transfer')" style="background:#8b5cf6;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">🔄 تحويل بين الحسابات</button>
+          <button type="button" onclick="openExpenseModal()" style="background:#ef4444;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">🧾 تسجيل مصروف</button>
+        </div>
+      </div>
+
+      <div class="stmt-summary-grid" style="margin-bottom:0;">
+        <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
+          <div class="stmt-kpi-lbl" style="color:#a7f3d0;">💵 درج الكاش والخزنة</div>
+          <div class="stmt-kpi-val" id="trsSumCash" style="color:#34d399;">0 ج.م</div>
+        </div>
+        <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
+          <div class="stmt-kpi-lbl" style="color:#93c5fd;">🏦 البنوك</div>
+          <div class="stmt-kpi-val" id="trsSumBank" style="color:#93c5fd;">0 ج.م</div>
+        </div>
+        <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
+          <div class="stmt-kpi-lbl" style="color:#fca5a5;">📱 فودافون كاش &amp; إنستاباي</div>
+          <div class="stmt-kpi-val" id="trsSumDigital" style="color:#fca5a5;">0 ج.م</div>
+        </div>
+        <div class="stmt-kpi" style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.16);color:#fff;">
+          <div class="stmt-kpi-lbl" style="color:#fde68a;">🛡️ استراتيجي / احتياطي</div>
+          <div class="stmt-kpi-val" id="trsSumReserve" style="color:#fde68a;">0 ج.م</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>💳 أرصدة البنوك والمحافظ والخزنة والاحتياطي</span>
+        <span style="font-size:11px;color:#64748b;">إجمالي المصروفات المسجلة: <strong id="trsTotalExpensesVal" style="color:#dc2626;">0 ج.م</strong></span>
+      </div>
+      <div id="trsAccountsGrid" class="trs-accounts-grid"></div>
+    </div>
+
+    <div class="card" style="padding:10px;">
+      <div class="toggle-pair" style="margin-bottom:8px;">
+        <button type="button" id="trsSubMovBtn" class="active-pair" onclick="switchTreasurySubTab('moves')">🔄 سجل حركات الخزنة والتحويلات</button>
+        <button type="button" id="trsSubExpBtn" onclick="switchTreasurySubTab('expenses')">🧾 سجل المصروفات</button>
+      </div>
+
+      <div id="trsMovesPanel">
+        <input type="text" id="trsMoveSearchInput" class="section-quick-search" placeholder="🔍 بحث في حركات الخزنة بالبنك أو الرقم أو البيان..." oninput="trsPageMoves=1; renderTreasuryMovementsTable();">
+        <table>
+          <thead>
+            <tr>
+              <th>المعرف / التاريخ</th>
+              <th>النوع / الحساب</th>
+              <th>المبلغ</th>
+              <th>تحكم</th>
+            </tr>
+          </thead>
+          <tbody id="trsMovementsBody"></tbody>
+        </table>
+        <div id="pg-trsMoves" class="pagination-bar"></div>
+      </div>
+
+      <div id="trsExpensesPanel" style="display:none;">
+        <input type="text" id="trsExpSearchInput" class="section-quick-search" placeholder="🔍 بحث في المصروفات بالبند أو الحساب أو الملاحظات..." oninput="trsPageExp=1; renderExpensesTable();">
+        <table>
+          <thead>
+            <tr>
+              <th>التاريخ</th>
+              <th>البند / البيان</th>
+              <th>المبلغ / الحساب</th>
+              <th>تحكم</th>
+            </tr>
+          </thead>
+          <tbody id="trsExpensesBody"></tbody>
+        </table>
+        <div id="pg-trsExp" class="pagination-bar"></div>
+      </div>
+    </div>
+  </div>
+
+<!-- 6. التقارير -->
   <div id="tab-reports" class="tab-content">
     <div class="card no-print">
       <div class="card-title">
@@ -8621,6 +8744,475 @@ ${statusLine}
     renderPaginationBar('pg-invoices', sorted.length, perPage, pageState.invoices, 'setPageInvoices', 'invoices');
   };
 
+
+  // ============================================================================
+  // 7. نظام الخزنة والحسابات والمصروفات (منفصل تماماً عن أرصدة العملاء والموردين)
+  // ============================================================================
+  const TRS_STORAGE_KEY = 'masa_erp_treasury_v5_5';
+  let treasuryAccounts = [];
+  let treasuryMovements = [];
+  let expensesList = [];
+  let trsPageMoves = 1;
+  let trsPageExp = 1;
+
+  function defaultTreasuryAccounts() {
+    return [
+      { id: 'TRS-CASH-1', type: 'cash', name: 'درج الكاش الرئيسي', phone: '', linkedBankId: '', balance: 0, notes: 'كاش المحل' },
+      { id: 'TRS-RES-1', type: 'reserve', name: 'حساب استراتيجي / احتياطي', phone: '', linkedBankId: '', balance: 0, notes: 'احتياطي التشغيل' }
+    ];
+  }
+
+  function loadTreasuryState() {
+    try {
+      const raw = localStorage.getItem(TRS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) treasuryAccounts = parsed.accounts;
+        else treasuryAccounts = defaultTreasuryAccounts();
+        treasuryMovements = Array.isArray(parsed.movements) ? parsed.movements : [];
+        expensesList = Array.isArray(parsed.expenses) ? parsed.expenses : [];
+      } else {
+        treasuryAccounts = defaultTreasuryAccounts();
+        treasuryMovements = [];
+        expensesList = [];
+      }
+    } catch (e) {
+      treasuryAccounts = defaultTreasuryAccounts();
+      treasuryMovements = [];
+      expensesList = [];
+    }
+  }
+
+  function saveTreasuryState(syncRemote = true) {
+    try {
+      localStorage.setItem(TRS_STORAGE_KEY, JSON.stringify({
+        accounts: treasuryAccounts,
+        movements: treasuryMovements,
+        expenses: expensesList
+      }));
+    } catch (e) {}
+    if (syncRemote && isAdminUnlocked && sessionAdminPin) {
+      const enrichedAccs = treasuryAccounts.map(a => {
+        const linkedBank = treasuryAccounts.find(b => b.id === a.linkedBankId);
+        return {
+          ...a,
+          linkedBankName: linkedBank ? linkedBank.name : ''
+        };
+      });
+      enqueueServerSync({
+        type: 'sync_treasury_state',
+        pin: sessionAdminPin,
+        accounts: enrichedAccs,
+        movements: treasuryMovements.slice(0, 150)
+      }, false);
+    }
+  }
+
+  function getTreasuryTypeMeta(type) {
+    const map = {
+      bank: { label: '🏦 بنك', cardClass: 'kind-bank' },
+      wallet: { label: '📱 فودافون كاش', cardClass: 'kind-wallet' },
+      instapay: { label: '⚡ إنستاباي', cardClass: 'kind-instapay' },
+      cash: { label: '💵 خزنة / كاش', cardClass: 'kind-cash' },
+      reserve: { label: '🛡️ استراتيجي / احتياطي', cardClass: 'kind-reserve' }
+    };
+    return map[type] || { label: '💳 حساب', cardClass: '' };
+  }
+
+  function openTreasuryAccountModal(accId = '') {
+    const existing = accId ? treasuryAccounts.find(a => a.id === accId) : null;
+    document.getElementById('trsEditAccId').value = existing ? existing.id : '';
+    document.getElementById('trsAccModalTitle').innerText = existing ? '✏️ تعديل حساب الخزنة' : '💳 إضافة حساب خزنة / بنك / محفظة';
+    document.getElementById('trsAccType').value = existing ? existing.type : 'bank';
+    document.getElementById('trsAccName').value = existing ? existing.name : '';
+    document.getElementById('trsAccPhone').value = existing ? (existing.phone || '') : '';
+    document.getElementById('trsAccBalance').value = existing ? (Number(existing.balance) || 0) : 0;
+    document.getElementById('trsAccNotes').value = existing ? (existing.notes || '') : '';
+
+    const bankSel = document.getElementById('trsAccLinkedBank');
+    const banks = treasuryAccounts.filter(a => a.type === 'bank' && a.id !== (existing ? existing.id : ''));
+    bankSel.innerHTML = `<option value="">-- بدون ربط بنك --</option>` + banks.map(b =>
+      `<option value="${b.id}">${b.name} (${Number(b.balance || 0).toLocaleString()} ج.م)</option>`
+    ).join('');
+    if (existing && existing.linkedBankId) bankSel.value = existing.linkedBankId;
+
+    onTreasuryAccTypeChange();
+    document.getElementById('trsAccountModal').style.display = 'flex';
+  }
+
+  function onTreasuryAccTypeChange() {
+    const t = document.getElementById('trsAccType').value;
+    const phoneWrap = document.getElementById('trsAccPhoneWrap');
+    const bankWrap = document.getElementById('trsAccLinkedBankWrap');
+    const nameLabel = document.getElementById('trsAccNameLabel');
+    const nameInp = document.getElementById('trsAccName');
+
+    if (phoneWrap) phoneWrap.style.display = (t === 'wallet') ? 'flex' : 'none';
+    if (bankWrap) bankWrap.style.display = (t === 'wallet' || t === 'instapay') ? 'flex' : 'none';
+
+    if (t === 'wallet') {
+      nameLabel.innerText = 'اسم المحفظة (مثال: فودافون كاش المحل)';
+      if (!nameInp.value) nameInp.placeholder = 'فودافون كاش - اسم الحساب';
+    } else if (t === 'instapay') {
+      nameLabel.innerText = 'اسم حساب إنستاباي / IPA';
+      if (!nameInp.value) nameInp.placeholder = 'إنستاباي - اسم أو عنوان IPA';
+    } else if (t === 'bank') {
+      nameLabel.innerText = 'اسم البنك';
+      if (!nameInp.value) nameInp.placeholder = 'مثال: البنك الأهلي / بنك مصر / CIB';
+    } else if (t === 'reserve') {
+      nameLabel.innerText = 'اسم الحساب الاستراتيجي / الاحتياطي';
+      if (!nameInp.value) nameInp.placeholder = 'مثال: احتياطي السيولة / استراتيجي';
+    } else {
+      nameLabel.innerText = 'اسم الخزنة / الدرج';
+      if (!nameInp.value) nameInp.placeholder = 'مثال: درج الكاش الرئيسي';
+    }
+  }
+
+  function saveTreasuryAccountModal() {
+    const editId = document.getElementById('trsEditAccId').value.trim();
+    const type = document.getElementById('trsAccType').value;
+    const phone = cleanEgyptianPhone(document.getElementById('trsAccPhone').value.trim());
+    let name = document.getElementById('trsAccName').value.trim();
+    if (!name && phone) name = `فودافون كاش ${phone}`;
+    if (!name) return alert('اكتب اسم الحساب أو الرقم أولاً');
+
+    const linkedBankId = (type === 'wallet' || type === 'instapay') ? document.getElementById('trsAccLinkedBank').value : '';
+    const balance = Number(document.getElementById('trsAccBalance').value) || 0;
+    const notes = document.getElementById('trsAccNotes').value.trim();
+
+    if (editId) {
+      const acc = treasuryAccounts.find(x => x.id === editId);
+      if (acc) Object.assign(acc, { type, name, phone, linkedBankId, balance, notes });
+      showToast(`✅ تم تعديل الحساب (${name})`);
+    } else {
+      const newId = 'TRS-' + String(treasuryAccounts.length + 1).padStart(3, '0') + '-' + Math.floor(Math.random() * 90 + 10);
+      treasuryAccounts.push({ id: newId, type, name, phone, linkedBankId, balance, notes });
+      showToast(`✅ تم إضافة الحساب (${name}) بنجاح`);
+    }
+
+    document.getElementById('trsAccountModal').style.display = 'none';
+    renderTreasuryTab();
+    saveTreasuryState(true);
+  }
+
+  function deleteTreasuryAccount(accId) {
+    if (treasuryAccounts.length <= 1) return alert('يجب بقاء حساب واحد على الأقل في الخزنة');
+    const acc = treasuryAccounts.find(x => x.id === accId);
+    if (!acc) return;
+    if (!confirm(`هل تريد حذف الحساب (${acc.name})؟`)) return;
+    treasuryAccounts = treasuryAccounts.filter(x => x.id !== accId);
+    renderTreasuryTab();
+    saveTreasuryState(true);
+    showToast('🗑️ تم حذف الحساب');
+  }
+
+  function openTreasuryMoveModal(kind = 'transfer', prefillAccId = '') {
+    document.getElementById('trsMoveKind').value = kind;
+    const fromSel = document.getElementById('trsFromAccSelect');
+    const toSel = document.getElementById('trsToAccSelect');
+    const fromWrap = document.getElementById('trsFromAccWrap');
+    const toWrap = document.getElementById('trsToAccWrap');
+    const titleEl = document.getElementById('trsMoveModalTitle');
+
+    const optsHtml = treasuryAccounts.map(a => {
+      const meta = getTreasuryTypeMeta(a.type);
+      const phTxt = a.phone ? ` (${a.phone})` : '';
+      return `<option value="${a.id}">${meta.label}: ${a.name}${phTxt} [${Number(a.balance || 0).toLocaleString()} ج.م]</option>`;
+    }).join('');
+
+    fromSel.innerHTML = optsHtml;
+    toSel.innerHTML = optsHtml;
+
+    if (kind === 'in') {
+      titleEl.innerText = '📥 إيداع / استلام في حساب';
+      fromWrap.style.display = 'none';
+      toWrap.style.display = 'flex';
+      if (prefillAccId) toSel.value = prefillAccId;
+    } else if (kind === 'out') {
+      titleEl.innerText = '📤 سحب / صرف من حساب';
+      fromWrap.style.display = 'flex';
+      toWrap.style.display = 'none';
+      if (prefillAccId) fromSel.value = prefillAccId;
+    } else {
+      titleEl.innerText = '🔄 تحويل بين حسابات الخزنة (بنك / إنستاباي / كاش / احتياطي)';
+      fromWrap.style.display = 'flex';
+      toWrap.style.display = 'flex';
+      if (prefillAccId) fromSel.value = prefillAccId;
+      if (treasuryAccounts.length > 1 && fromSel.value === toSel.value) {
+        const alt = treasuryAccounts.find(x => x.id !== fromSel.value);
+        if (alt) toSel.value = alt.id;
+      }
+    }
+
+    document.getElementById('trsMoveAmount').value = '';
+    document.getElementById('trsMoveNote').value = '';
+    document.getElementById('trsMoveModal').style.display = 'flex';
+  }
+
+  function submitTreasuryMove() {
+    const kind = document.getElementById('trsMoveKind').value;
+    const fromId = document.getElementById('trsFromAccSelect').value;
+    const toId = document.getElementById('trsToAccSelect').value;
+    const amount = Number(document.getElementById('trsMoveAmount').value) || 0;
+    const note = document.getElementById('trsMoveNote').value.trim();
+
+    if (amount <= 0) return alert('اكتب مبلغ صحيح أكبر من صفر');
+    if (kind === 'transfer' && fromId === toId) return alert('اختر حساباً مختلفاً للتحويل إليه');
+
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const moveId = 'TMV-' + String(treasuryMovements.length + 1).padStart(4, '0');
+    const fromAcc = treasuryAccounts.find(a => a.id === fromId);
+    const toAcc = treasuryAccounts.find(a => a.id === toId);
+
+    let kindLabel = 'تحويل';
+    if (kind === 'in') {
+      if (!toAcc) return alert('اختر الحساب');
+      toAcc.balance = (Number(toAcc.balance) || 0) + amount;
+      kindLabel = '📥 إيداع';
+    } else if (kind === 'out') {
+      if (!fromAcc) return alert('اختر الحساب');
+      fromAcc.balance = (Number(fromAcc.balance) || 0) - amount;
+      kindLabel = '📤 سحب';
+    } else {
+      if (!fromAcc || !toAcc) return alert('اختر الحسابين');
+      fromAcc.balance = (Number(fromAcc.balance) || 0) - amount;
+      toAcc.balance = (Number(toAcc.balance) || 0) + amount;
+      kindLabel = '🔄 تحويل';
+    }
+
+    treasuryMovements.unshift({
+      id: moveId,
+      date: nowStr,
+      kind,
+      kindLabel,
+      fromId: kind === 'in' ? '' : fromId,
+      toId: kind === 'out' ? '' : toId,
+      fromName: kind === 'in' ? 'خارجي' : (fromAcc ? fromAcc.name : ''),
+      toName: kind === 'out' ? 'خارجي' : (toAcc ? toAcc.name : ''),
+      amount,
+      note
+    });
+
+    document.getElementById('trsMoveModal').style.display = 'none';
+    renderTreasuryTab();
+    saveTreasuryState(true);
+    showToast(`✅ تم تنفيذ (${kindLabel}) بمبلغ ${amount.toLocaleString()} ج.م`);
+  }
+
+  function deleteTreasuryMovement(moveId) {
+    const mv = treasuryMovements.find(m => m.id === moveId);
+    if (!mv) return;
+    if (!confirm(`حذف الحركة (${moveId}) وعكس أثرها على الأرصدة؟`)) return;
+
+    const amt = Number(mv.amount) || 0;
+    const fromAcc = treasuryAccounts.find(a => a.id === mv.fromId);
+    const toAcc = treasuryAccounts.find(a => a.id === mv.toId);
+    if (mv.kind === 'in' && toAcc) toAcc.balance -= amt;
+    else if (mv.kind === 'out' && fromAcc) fromAcc.balance += amt;
+    else if (mv.kind === 'transfer') {
+      if (fromAcc) fromAcc.balance += amt;
+      if (toAcc) toAcc.balance -= amt;
+    }
+
+    treasuryMovements = treasuryMovements.filter(m => m.id !== moveId);
+    renderTreasuryTab();
+    saveTreasuryState(true);
+    showToast('🗑️ تم حذف حركة الخزنة وعكس أثرها');
+  }
+
+  function openExpenseModal(prefillAccId = '') {
+    const sel = document.getElementById('trsExpAccSelect');
+    sel.innerHTML = treasuryAccounts.map(a => {
+      const meta = getTreasuryTypeMeta(a.type);
+      return `<option value="${a.id}">${meta.label}: ${a.name} [${Number(a.balance || 0).toLocaleString()} ج.م]</option>`;
+    }).join('');
+    if (prefillAccId) sel.value = prefillAccId;
+    document.getElementById('trsExpTitle').value = '';
+    document.getElementById('trsExpAmount').value = '';
+    document.getElementById('trsExpDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('trsExpenseModal').style.display = 'flex';
+  }
+
+  function submitExpenseModal() {
+    const accId = document.getElementById('trsExpAccSelect').value;
+    const title = document.getElementById('trsExpTitle').value.trim();
+    const amount = Number(document.getElementById('trsExpAmount').value) || 0;
+    const dateVal = document.getElementById('trsExpDate').value || new Date().toISOString().split('T')[0];
+
+    if (!accId || !title || amount <= 0) return alert('اختر الحساب واكتب البند والمبلغ الصحيح');
+
+    const acc = treasuryAccounts.find(a => a.id === accId);
+    if (acc) acc.balance = (Number(acc.balance) || 0) - amount;
+
+    const expId = 'EXP-' + String(expensesList.length + 1).padStart(4, '0');
+    expensesList.unshift({
+      id: expId,
+      date: dateVal,
+      title,
+      amount,
+      accId,
+      accName: acc ? acc.name : ''
+    });
+
+    document.getElementById('trsExpenseModal').style.display = 'none';
+    renderTreasuryTab();
+    saveTreasuryState(true);
+    showToast(`✅ تم تسجيل المصروف (${title}) بمبلغ ${amount.toLocaleString()} ج.م`);
+  }
+
+  function deleteExpenseById(expId) {
+    const exp = expensesList.find(e => e.id === expId);
+    if (!exp) return;
+    if (!confirm(`حذف المصروف (${exp.title}) وإرجاع المبلغ (${Number(exp.amount || 0).toLocaleString()} ج.م) للحساب؟`)) return;
+    const acc = treasuryAccounts.find(a => a.id === exp.accId);
+    if (acc) acc.balance = (Number(acc.balance) || 0) + (Number(exp.amount) || 0);
+    expensesList = expensesList.filter(e => e.id !== expId);
+    renderTreasuryTab();
+    saveTreasuryState(true);
+    showToast('🗑️ تم حذف المصروف وإرجاع المبلغ');
+  }
+
+  function switchTreasurySubTab(sub) {
+    const isMoves = (sub === 'moves');
+    document.getElementById('trsMovesPanel').style.display = isMoves ? 'block' : 'none';
+    document.getElementById('trsExpensesPanel').style.display = isMoves ? 'none' : 'block';
+    document.getElementById('trsSubMovBtn').classList.toggle('active-pair', isMoves);
+    document.getElementById('trsSubExpBtn').classList.toggle('active-pair', !isMoves);
+    if (isMoves) renderTreasuryMovementsTable();
+    else renderExpensesTable();
+  }
+
+  function renderTreasuryTab() {
+    let cashSum = 0, bankSum = 0, digiSum = 0, resSum = 0, grandSum = 0;
+    treasuryAccounts.forEach(a => {
+      const b = Number(a.balance) || 0;
+      grandSum += b;
+      if (a.type === 'cash') cashSum += b;
+      else if (a.type === 'bank') bankSum += b;
+      else if (a.type === 'wallet' || a.type === 'instapay') digiSum += b;
+      else if (a.type === 'reserve') resSum += b;
+    });
+
+    const expSum = expensesList.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+    const elGrand = document.getElementById('trsGrandTotal');
+    if (elGrand) elGrand.innerText = `${grandSum.toLocaleString()} ج.م`;
+    const elCash = document.getElementById('trsSumCash');
+    if (elCash) elCash.innerText = `${cashSum.toLocaleString()} ج.م`;
+    const elBank = document.getElementById('trsSumBank');
+    if (elBank) elBank.innerText = `${bankSum.toLocaleString()} ج.م`;
+    const elDigi = document.getElementById('trsSumDigital');
+    if (elDigi) elDigi.innerText = `${digiSum.toLocaleString()} ج.م`;
+    const elRes = document.getElementById('trsSumReserve');
+    if (elRes) elRes.innerText = `${resSum.toLocaleString()} ج.م`;
+    const elExpTot = document.getElementById('trsTotalExpensesVal');
+    if (elExpTot) elExpTot.innerText = `${expSum.toLocaleString()} ج.م`;
+
+    const grid = document.getElementById('trsAccountsGrid');
+    if (grid) {
+      grid.innerHTML = treasuryAccounts.map(a => {
+        const meta = getTreasuryTypeMeta(a.type);
+        const linkedBank = a.linkedBankId ? treasuryAccounts.find(x => x.id === a.linkedBankId) : null;
+        const subParts = [meta.label];
+        if (a.phone) subParts.push(`📞 ${a.phone}`);
+        if (linkedBank) subParts.push(`🔗 مربوط على: ${linkedBank.name}`);
+        if (a.notes) subParts.push(a.notes);
+        const bal = Number(a.balance) || 0;
+
+        return `
+          <div class="trs-acc-card ${meta.cardClass}">
+            <div class="trs-acc-top">
+              <div>
+                <div class="trs-acc-name">${a.name}</div>
+                <div class="trs-acc-sub">${subParts.join(' • ')}</div>
+              </div>
+              <div class="trs-acc-bal" style="color:${bal < 0 ? '#dc2626' : '#0f2922'};">${bal.toLocaleString()} ج.م</div>
+            </div>
+            <div class="trs-acc-actions">
+              <button type="button" class="btn-sm" style="background:#dcfce7;color:#166534;" onclick="openTreasuryMoveModal('in', '${a.id}')">📥 إيداع</button>
+              <button type="button" class="btn-sm" style="background:#fef3c7;color:#92400e;" onclick="openTreasuryMoveModal('out', '${a.id}')">📤 سحب</button>
+              <button type="button" class="btn-sm" style="background:#e0e7ff;color:#1e40af;" onclick="openTreasuryAccountModal('${a.id}')">✏️ تعديل</button>
+              <button type="button" class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteTreasuryAccount('${a.id}')">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    renderTreasuryMovementsTable();
+    renderExpensesTable();
+  }
+
+  function renderTreasuryMovementsTable() {
+    const tbody = document.getElementById('trsMovementsBody');
+    if (!tbody) return;
+    const q = normalizeArabic((document.getElementById('trsMoveSearchInput') || {}).value || '');
+    const filtered = treasuryMovements.filter(m =>
+      !q || normalizeArabic(`${m.id} ${m.date} ${m.kindLabel} ${m.fromName} ${m.toName} ${m.note}`).includes(q)
+    );
+
+    const perPage = PAGE_SIZES.payments || 20;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+    if (trsPageMoves > totalPages) trsPageMoves = 1;
+    const startIdx = (trsPageMoves - 1) * perPage;
+    const slice = filtered.slice(startIdx, startIdx + perPage);
+
+    tbody.innerHTML = slice.map(m => `
+      <tr>
+        <td style="font-size:10px;font-weight:bold;">${m.id}<br><span style="color:#64748b;font-weight:normal;">📅 ${m.date || '-'}</span></td>
+        <td style="text-align:right;font-size:11px;"><strong>${m.kindLabel || 'حركة'}</strong>: ${m.fromName} ⬅️ ${m.toName}${m.note ? `<br><span style="color:#64748b;">${m.note}</span>` : ''}</td>
+        <td style="font-weight:900;color:#0f2922;">${(Number(m.amount) || 0).toLocaleString()} ج.م</td>
+        <td><button type="button" class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteTreasuryMovement('${m.id}')">🗑️</button></td>
+      </tr>
+    `).join('') || `<tr><td colspan="4" style="color:#64748b;padding:12px;">لا توجد حركات مسجلة في الخزنة بعد</td></tr>`;
+
+    renderPaginationBar('pg-trsMoves', filtered.length, perPage, trsPageMoves, 'setPageTrsMoves', 'payments');
+  }
+
+  function setPageTrsMoves(p) { trsPageMoves = p; renderTreasuryMovementsTable(); }
+
+  function renderExpensesTable() {
+    const tbody = document.getElementById('trsExpensesBody');
+    if (!tbody) return;
+    const q = normalizeArabic((document.getElementById('trsExpSearchInput') || {}).value || '');
+    const filtered = expensesList.filter(e =>
+      !q || normalizeArabic(`${e.date} ${e.title} ${e.accName}`).includes(q)
+    );
+
+    const perPage = PAGE_SIZES.payments || 20;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+    if (trsPageExp > totalPages) trsPageExp = 1;
+    const startIdx = (trsPageExp - 1) * perPage;
+    const slice = filtered.slice(startIdx, startIdx + perPage);
+
+    tbody.innerHTML = slice.map(e => `
+      <tr>
+        <td style="font-size:10.5px;font-weight:bold;">📅 ${e.date || '-'}</td>
+        <td style="text-align:right;font-weight:bold;">${e.title}</td>
+        <td style="font-weight:900;color:#dc2626;">${(Number(e.amount) || 0).toLocaleString()} ج.م<br><span style="font-size:10px;color:#475569;font-weight:normal;">${e.accName || ''}</span></td>
+        <td><button type="button" class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="deleteExpenseById('${e.id}')">🗑️</button></td>
+      </tr>
+    `).join('') || `<tr><td colspan="4" style="color:#64748b;padding:12px;">لا توجد مصروفات مسجلة بعد</td></tr>`;
+
+    renderPaginationBar('pg-trsExp', filtered.length, perPage, trsPageExp, 'setPageTrsExp', 'payments');
+  }
+
+  function setPageTrsExp(p) { trsPageExp = p; renderExpensesTable(); }
+
+  // Hook loadTreasuryState into window.onload & renderTreasuryTab into renderAllViews
+  const _origOnloadV55 = window.onload;
+  window.onload = async function() {
+    loadTreasuryState();
+    renderTreasuryTab();
+    if (typeof _origOnloadV55 === 'function') await _origOnloadV55();
+  };
+
+  const _origRenderAllViewsV55 = renderAllViews;
+  renderAllViews = function() {
+    _origRenderAllViewsV55();
+    renderTreasuryTab();
+  };
+
 </script>
 
   <!-- 7. نافذة معاينة وطباعة الفاتورة PDF وإرسال واتساب (موبايل / كمبيوتر) -->
@@ -8845,6 +9437,121 @@ ${statusLine}
       </div>
 
       <button type="button" onclick="submitOffsetNetting()" style="width:100%;background:linear-gradient(135deg,#ea580c,#c2410c);color:#fff;border:none;padding:11px;border-radius:10px;font-weight:900;font-size:14px;cursor:pointer;">⚖️ تنفيذ المقاصة وتحديث الأرصدة والتنبيهات</button>
+    </div>
+  </div>
+
+
+  <!-- 11. نافذة إضافة / تعديل حساب خزنة أو بنك أو محفظة أو إنستاباي أو احتياطي -->
+  <div id="trsAccountModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:480px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding-bottom:8px;margin-bottom:10px;">
+        <h3 id="trsAccModalTitle" style="margin:0;color:#0f2922;font-size:15px;">💳 إضافة حساب خزنة / بنك / محفظة</h3>
+        <button type="button" onclick="document.getElementById('trsAccountModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+      <input type="hidden" id="trsEditAccId">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>نوع الحساب</label>
+          <select id="trsAccType" onchange="onTreasuryAccTypeChange()">
+            <option value="bank">🏦 حساب بنكي</option>
+            <option value="wallet">📱 محفظة فودافون كاش (برقم)</option>
+            <option value="instapay">⚡ حساب إنستاباي (InstaPay)</option>
+            <option value="cash">💵 خزنة / درج كاش</option>
+            <option value="reserve">🛡️ حساب استراتيجي / احتياطي</option>
+          </select>
+        </div>
+
+        <div class="form-group full" id="trsAccNameWrap">
+          <label id="trsAccNameLabel">اسم البنك أو الحساب</label>
+          <input type="text" id="trsAccName" placeholder="مثال: البنك الأهلي المصري أو خزنة المحل...">
+        </div>
+
+        <div class="form-group full" id="trsAccPhoneWrap" style="display:none;">
+          <label>رقم فودافون كاش / الموبايل المرتبط</label>
+          <input type="text" id="trsAccPhone" placeholder="010xxxxxxxx" oninput="this.value = cleanEgyptianPhone(this.value)">
+        </div>
+
+        <div class="form-group full" id="trsAccLinkedBankWrap" style="display:none;">
+          <label>ربط على بنك (اختياري)</label>
+          <select id="trsAccLinkedBank"></select>
+        </div>
+
+        <div class="form-group full">
+          <label>الرصيد الحالي (ج.م)</label>
+          <input type="number" id="trsAccBalance" step="any" value="0" style="font-weight:900;font-size:15px;">
+        </div>
+
+        <div class="form-group full">
+          <label>ملاحظات (اختياري)</label>
+          <input type="text" id="trsAccNotes" placeholder="فرع / حد شهري / ملاحظات...">
+        </div>
+      </div>
+      <button type="button" onclick="saveTreasuryAccountModal()" style="width:100%;margin-top:12px;background:var(--success);color:#fff;border:none;padding:11px;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;">💾 حفظ الحساب</button>
+    </div>
+  </div>
+
+  <!-- 12. نافذة إيداع / سحب / تحويل بين حسابات الخزنة -->
+  <div id="trsMoveModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:460px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding-bottom:8px;margin-bottom:10px;">
+        <h3 id="trsMoveModalTitle" style="margin:0;color:#0f2922;font-size:15px;">🔄 حركة خزنة</h3>
+        <button type="button" onclick="document.getElementById('trsMoveModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+      <input type="hidden" id="trsMoveKind">
+
+      <div id="trsFromAccWrap" class="form-group" style="margin-bottom:8px;">
+        <label id="trsFromAccLabel">من حساب</label>
+        <select id="trsFromAccSelect"></select>
+      </div>
+
+      <div id="trsToAccWrap" class="form-group" style="margin-bottom:8px;">
+        <label id="trsToAccLabel">إلى حساب</label>
+        <select id="trsToAccSelect"></select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:8px;">
+        <label>المبلغ (ج.م)</label>
+        <input type="number" id="trsMoveAmount" step="any" placeholder="0" style="font-size:16px;font-weight:900;text-align:center;">
+      </div>
+
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>البيان / ملاحظات</label>
+        <input type="text" id="trsMoveNote" placeholder="تحويل بنكي / إنستاباي / ترحيل احتياطي...">
+      </div>
+
+      <button type="button" onclick="submitTreasuryMove()" style="width:100%;background:#0f2922;color:#34d399;border:none;padding:11px;border-radius:10px;font-weight:900;font-size:14px;cursor:pointer;">✅ تنفيذ الحركة وتحديث الأرصدة</button>
+    </div>
+  </div>
+
+  <!-- 13. نافذة تسجيل مصروف -->
+  <div id="trsExpenseModal" class="modal-overlay">
+    <div class="modal-box" style="max-width:460px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid #e2e8f0;padding-bottom:8px;margin-bottom:10px;">
+        <h3 style="margin:0;color:#dc2626;font-size:15px;">🧾 تسجيل مصروف جديد</h3>
+        <button type="button" onclick="document.getElementById('trsExpenseModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕</button>
+      </div>
+
+      <div class="form-group" style="margin-bottom:8px;">
+        <label>الخصم من أي حساب</label>
+        <select id="trsExpAccSelect"></select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:8px;">
+        <label>بند المصروف / البيان</label>
+        <input type="text" id="trsExpTitle" placeholder="مثال: إيجار / كهرباء / شحن / مواصلات...">
+      </div>
+
+      <div class="form-group" style="margin-bottom:8px;">
+        <label>المبلغ (ج.م)</label>
+        <input type="number" id="trsExpAmount" step="any" placeholder="0" style="font-size:16px;font-weight:900;text-align:center;">
+      </div>
+
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>التاريخ</label>
+        <input type="date" id="trsExpDate">
+      </div>
+
+      <button type="button" onclick="submitExpenseModal()" style="width:100%;background:#dc2626;color:#fff;border:none;padding:11px;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;">💾 حفظ المصروف</button>
     </div>
   </div>
 
