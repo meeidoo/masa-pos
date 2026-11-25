@@ -1488,7 +1488,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v5.7</span>
+          <span>ERP Pro v5.8</span>
         </div>
         <button id="topBellBtn" class="top-bell-btn" title="مركز التنبيهات المستحقة" onclick="openAlertsFromTopBell()">
           <span>🔔</span>
@@ -1923,13 +1923,13 @@
   <div id="tab-treasury" class="tab-content">
     <div class="card" style="padding:10px;margin-bottom:10px;">
       <div class="toggle-pair" style="margin-bottom:0;">
-        <button type="button" id="trsMainBtnVault" class="active-pair" onclick="switchTreasuryTopView('vault')">🏦 الخزنة وحركاتها</button>
-        <button type="button" id="trsMainBtnExpenses" onclick="switchTreasuryTopView('expenses')">🧾 المصروفات وحصر البنود</button>
+        <button type="button" id="trsMainBtnExpenses" class="active-pair" onclick="switchTreasuryTopView('expenses')">🧾 المصروفات وحصر البنود</button>
+        <button type="button" id="trsMainBtnVault" onclick="switchTreasuryTopView('vault')">🏦 الخزنة وحركاتها</button>
       </div>
     </div>
 
     <!-- القسم الأول: الخزنة وحركاتها -->
-    <div id="trsVaultView">
+    <div id="trsVaultView" style="display:none;">
       <div class="card" style="background:linear-gradient(135deg,#0f2922,#1e3a8a);color:#fff;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
           <div>
@@ -1990,7 +1990,7 @@
     </div>
 
     <!-- القسم الثاني: شاشة المصروفات الكبيرة + حصر البنود والفترات + سجل الحركات -->
-    <div id="trsExpensesView" style="display:none;">
+    <div id="trsExpensesView">
       <div class="card" style="background:linear-gradient(135deg,#450a0a,#991b1b);color:#fff;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <div>
@@ -9706,6 +9706,20 @@ ${statusLine}
   renderTreasuryTab = function() {
     _origRenderTreasuryTabV57();
     renderExpensesTab();
+  };
+
+  const _origSwitchTabV58 = switchTab;
+  switchTab = function(tabName, btn) {
+    _origSwitchTabV58(tabName, btn);
+    if (tabName === 'treasury') {
+      switchTreasuryTopView('expenses');
+    }
+  };
+
+  const _origOnloadV58 = window.onload;
+  window.onload = async function() {
+    if (typeof _origOnloadV58 === 'function') await _origOnloadV58();
+    switchTreasuryTopView('expenses');
   };
 
 </script>
