@@ -1528,10 +1528,6 @@
             <button type="button" onclick="addDiscountToInvoice()" style="background:#fee2e2;color:#b91c1c;border:1.5px solid #fca5a5;padding:9px 11px;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;" title="إضافة بند خصم على الفاتورة">➖ إضافة خصم</button>
           </div>
           <div class="brand-pills" id="brandPillsContainer"></div>
-          <div id="posLiveCalcStrip" class="live-calc-box">
-            <span>🧮 حاسبة الفاتورة الفورية: <strong>0</strong> صنف</span>
-            <span id="posLiveCalcMath">الكمية × السعر = 0 ج.م</span>
-          </div>
         </div>
 
         <div id="invoiceItemsList" class="inv-items-list">
@@ -8086,32 +8082,7 @@ ${statusLine}
   }
 
   function updatePosLiveCalculation() {
-    const box = document.getElementById('posLiveCalcStrip');
-    const mathEl = document.getElementById('posLiveCalcMath');
-    if (!box || !mathEl) return;
-    const reg = invoiceItems.filter(i => i.kind !== 'discount');
-    if (reg.length === 0) {
-      box.classList.remove('calc-warn');
-      box.innerHTML = `<span>🧮 حاسبة الفاتورة الفورية: <strong>0</strong> صنف</span><span id="posLiveCalcMath">الكمية × السعر = 0 ج.م</span>`;
-      return;
-    }
-    let totalUnits = 0, gross = 0, hasInvalidPrice = false;
-    const parts = reg.map(it => {
-      const q = Number(it.qty) || 0;
-      const pr = Number(it.price) || 0;
-      if (q <= 0 || pr <= 0) hasInvalidPrice = true;
-      totalUnits += q;
-      const line = q * pr;
-      gross += line;
-      return `${q}×${pr.toLocaleString()}`;
-    });
-    const mathSummary = getInvoiceMathSummary(invoiceItems);
-    box.classList.toggle('calc-warn', hasInvalidPrice);
-    const discTxt = mathSummary.totalDiscount > 0 ? ` − خصم ${mathSummary.totalDiscount.toLocaleString()}` : '';
-    box.innerHTML = `
-      <span>🧮 ${reg.length} صنف (${totalUnits} وحدة): <strong>${parts.join(' + ')}</strong></span>
-      <span id="posLiveCalcMath">= <strong>${mathSummary.netTotal.toLocaleString()} ج.م</strong>${discTxt}${hasInvalidPrice ? ' ⚠️ راجع السعر' : ''}</span>
-    `;
+    // Removed from POS screen to keep invoice item area spacious; totals are displayed at top & bottom.
   }
 
   function updatePurchaseLiveCalc() {
