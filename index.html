@@ -1449,6 +1449,108 @@
       margin-bottom: 10px;
     }
 
+  
+    .bulk-excel-modal-box {
+      max-width: 980px !important;
+      width: 98vw !important;
+      padding: 16px !important;
+    }
+    .bulk-entry-bar {
+      display: grid;
+      grid-template-columns: 2fr 0.8fr 1fr auto;
+      gap: 7px;
+      align-items: end;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 11px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .bulk-pur-entry-bar {
+      display: grid;
+      grid-template-columns: 2fr 0.9fr 0.8fr 1fr auto;
+      gap: 7px;
+      align-items: end;
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 11px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 760px) {
+      .bulk-entry-bar, .bulk-pur-entry-bar {
+        grid-template-columns: 1fr 1fr;
+      }
+      .trs-accounts-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+    .bulk-grid-wrap {
+      max-height: 290px;
+      overflow-y: auto;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 11px;
+      margin-bottom: 12px;
+      background: #ffffff;
+    }
+    .bulk-settle-panel {
+      background: #0f2922;
+      color: #ffffff;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+  
+    .pos-pay-method-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+      margin-bottom: 6px;
+      width: 100%;
+    }
+    .pos-pm-btn {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      padding: 5px 3px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: all 0.12s;
+    }
+    .pos-pm-btn.active-pos-pm {
+      background: #0f2922;
+      color: #34d399;
+      border-color: #0f2922;
+    }
+    .pos-pay-acc-row {
+      display: none;
+      margin-bottom: 6px;
+      width: 100%;
+    }
+    .pos-pay-acc-row select {
+      width: 100%;
+      padding: 6px 9px;
+      border: 1.5px solid #0d9488;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #f0fdfa;
+      color: #0f2922;
+    }
+    @media (max-width: 760px) {
+      #expItemFilterInput {
+        flex-basis: 100% !important;
+        min-width: 100% !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1492,7 +1594,7 @@
       <div class="header-actions">
         <div class="erp-quick-pill" title="إصدار النظام المحاسبي">
           <span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;"></span>
-          <span>ERP Pro v5.9</span>
+          <span>ERP Pro v6.1</span>
         </div>
         <button id="topBellBtn" class="top-bell-btn" title="مركز التنبيهات المستحقة" onclick="openAlertsFromTopBell()">
           <span>🔔</span>
@@ -1576,6 +1678,8 @@
             <button id="wholesaleInstToggleBtn" class="rem-chip" style="background:#0284c7;" onclick="toggleWholesaleInstallments()">📅 تقسيم دفعات</button>
             <button id="bookingBoxToggleBtn" class="rem-chip" style="background:#d97706;color:#fff;" onclick="toggleBookingBox()">📦 حجز / شحن</button>
             <button class="rem-chip" style="background:#7c3aed;color:#fff;" onclick="saveCurrentAsQuotation()" title="حفظ الفاتورة الحالية كعرض أسعار بدون خصم مخزن أو حساب">📋 عرض سعر</button>
+            <button class="rem-chip" style="background:#1d4ed8;color:#fff;" onclick="openBulkSalesModal()" title="شاشة بيع جملة بنمط الإكسيل للكميات الكبيرة">📦 بيع جملة</button>
+            <button class="rem-chip" style="background:#0f766e;color:#fff;" onclick="openBulkPurchaseModal()" title="شاشة شراء جملة بنمط الإكسيل للكميات الكبيرة">📦 شراء جملة</button>
             <button class="rem-chip" style="background:#0d9488;color:#fff;" onclick="openBrokerageModal()" title="شراء من مورد وبيع لعميل أو لحساب الغير">🤝 وساطة</button>
             <button class="rem-chip" style="background:#ea580c;color:#fff;" onclick="openOffsetModal()" title="مقاصة بين عميل ومورد أو تحويل مباشر">⚖️ مقاصة</button>
           </div>
@@ -1869,6 +1973,9 @@
           <button onclick="openPurchaseModal()" style="background:var(--accent);color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             📦 فاتورة شراء
           </button>
+          <button onclick="openBulkPurchaseModal()" style="background:#1d4ed8;color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
+            📊 شراء جملة (إكسيل)
+          </button>
           <button onclick="openPurchaseReturnModal()" style="background:#dc2626;color:#fff;border:none;padding:8px 9px;border-radius:9px;font-weight:bold;font-size:11px;cursor:pointer;">
             ↩️ مرتجع لمورد
           </button>
@@ -1945,6 +2052,7 @@
             <button type="button" onclick="openTreasuryMoveModal('in')" style="background:#10b981;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">📥 إيداع / استلام</button>
             <button type="button" onclick="openTreasuryMoveModal('out')" style="background:#f59e0b;color:#0f172a;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">📤 سحب / صرف</button>
             <button type="button" onclick="openTreasuryMoveModal('transfer')" style="background:#8b5cf6;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">🔄 تحويل بين الحسابات</button>
+            <button type="button" onclick="loadAllData().then(()=>showToast('✅ تم تحديث الأرصدة من جوجل شيت'))" style="background:#334155;color:#fff;border:none;padding:8px 10px;border-radius:9px;font-weight:800;font-size:11.5px;cursor:pointer;">☁️ تحديث المزامنة</button>
           </div>
         </div>
 
@@ -2228,10 +2336,19 @@
       <div class="pay-row">
         <label style="font-size:11.5px;font-weight:bold;">المدفوع:</label>
         <input type="number" id="paidAmount" placeholder="0" oninput="onPaidAmountInput()">
-        <button class="btn-sm" onclick="setFullPaid()" style="background:#e2e8f0;">خالص كاش</button>
+        <button class="btn-sm" onclick="setFullPaid()" style="background:#e2e8f0;">خالص</button>
         <button class="btn-sm" onclick="openSalesReturnModal()" style="background:#fef3c7;color:#b45309;">↩️ مرتجع</button>
         <button class="btn-sm" onclick="clearInvoice()" style="background:#fee2e2;color:var(--danger);">جديدة</button>
         <button class="btn-sm" id="toggleQuickCmdBtn" onclick="toggleQuickCmdDrawer()" style="background:#e0f2fe;color:#0369a1;" title="إظهار أو إخفاء خانة الأمر النصي">⌨️ أمر</button>
+      </div>
+      <div class="pos-pay-method-row" id="posPayMethodBar">
+        <button type="button" class="pos-pm-btn active-pos-pm" data-pm="cash" onclick="selectPosPaymentMethod('cash')">💵 كاش</button>
+        <button type="button" class="pos-pm-btn" data-pm="instapay" onclick="selectPosPaymentMethod('instapay')">⚡ إنستاباي</button>
+        <button type="button" class="pos-pm-btn" data-pm="wallet" onclick="selectPosPaymentMethod('wallet')">📱 فودافون</button>
+        <button type="button" class="pos-pm-btn" data-pm="bank" onclick="selectPosPaymentMethod('bank')">🏦 بنكي</button>
+      </div>
+      <div class="pos-pay-acc-row" id="posPayAccountWrap">
+        <select id="posPayAccountSelect"></select>
       </div>
       <div class="actions-row">
         <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎙️ تحدث الآن</button>
@@ -3208,6 +3325,21 @@
         rmaList = data.rmaList || [];
         customAlertsList = data.customAlerts || [];
         quotationsList = data.quotations || [];
+        if (data.treasuryState && Array.isArray(data.treasuryState.accounts) && data.treasuryState.accounts.length > 0) {
+          treasuryAccounts = data.treasuryState.accounts;
+          treasuryMovements = Array.isArray(data.treasuryState.movements) ? data.treasuryState.movements : [];
+          expensesList = Array.isArray(data.treasuryState.expenses) ? data.treasuryState.expenses : [];
+          try {
+            localStorage.setItem(TRS_STORAGE_KEY, JSON.stringify({
+              accounts: treasuryAccounts,
+              movements: treasuryMovements,
+              expenses: expensesList
+            }));
+          } catch (e) {}
+          if (typeof renderTreasuryTab === 'function') renderTreasuryTab();
+          if (typeof renderExpensesTab === 'function') renderExpensesTab();
+          if (typeof selectPosPaymentMethod === 'function') selectPosPaymentMethod(currentPosPayMethod || 'cash');
+        }
 
         invoiceItems.forEach(it => { it.prodRef = catalog.find(p => p.name === it.name); });
         updateConnBadge();
@@ -8956,7 +9088,8 @@ ${statusLine}
         type: 'sync_treasury_state',
         pin: sessionAdminPin,
         accounts: enrichedAccs,
-        movements: treasuryMovements.slice(0, 150)
+        movements: treasuryMovements.slice(0, 150),
+        expenses: expensesList.slice(0, 250)
       }, false);
     }
   }
@@ -9683,25 +9816,26 @@ ${statusLine}
       document.querySelectorAll('#expPeriodPills .filter-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     }
+    const toLocalIso = (dt) => {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const d = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = toLocalIso(now);
 
     if (periodKey === 'current_month') {
-      const startM = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      document.getElementById('expFromDate').value = startM;
+      document.getElementById('expFromDate').value = toLocalIso(new Date(now.getFullYear(), now.getMonth(), 1));
       document.getElementById('expToDate').value = todayStr;
     } else if (periodKey === 'last_month') {
-      const startLast = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
-      const endLast = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
-      document.getElementById('expFromDate').value = startLast;
-      document.getElementById('expToDate').value = endLast;
+      document.getElementById('expFromDate').value = toLocalIso(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      document.getElementById('expToDate').value = toLocalIso(new Date(now.getFullYear(), now.getMonth(), 0));
     } else if (periodKey === 'last_3m') {
-      const start3 = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
-      document.getElementById('expFromDate').value = start3;
+      document.getElementById('expFromDate').value = toLocalIso(new Date(now.getFullYear(), now.getMonth() - 2, 1));
       document.getElementById('expToDate').value = todayStr;
     } else if (periodKey === 'last_5m') {
-      const start5 = new Date(now.getFullYear(), now.getMonth() - 4, 1).toISOString().split('T')[0];
-      document.getElementById('expFromDate').value = start5;
+      document.getElementById('expFromDate').value = toLocalIso(new Date(now.getFullYear(), now.getMonth() - 4, 1));
       document.getElementById('expToDate').value = todayStr;
     } else if (periodKey === 'all') {
       document.getElementById('expFromDate').value = '';
@@ -9788,6 +9922,714 @@ ${statusLine}
   window.onload = async function() {
     if (typeof _origOnloadV58 === 'function') await _origOnloadV58();
     switchTreasuryTopView('expenses');
+  };
+
+
+  // ============================================================================
+  // 9. شاشة بيع الجملة وشاشة شراء الجملة بنمط الإكسيل (Bulk Sales & Purchase)
+  // ============================================================================
+  let bulkSalesRows = [];
+  let bulkPurchaseRows = [];
+  let bsInstMode = 'count';
+  let bpInstMode = 'count';
+
+  function populateBulkTreasurySelect(selectId) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    const pool = (typeof treasuryAccounts !== 'undefined' && treasuryAccounts.length > 0)
+      ? treasuryAccounts
+      : [{ id: 'TRS-CASH-1', name: 'درج الكاش الرئيسي', balance: 0 }];
+    sel.innerHTML = pool.map(a => `<option value="${a.id}">${a.name} (${Number(a.balance || 0).toLocaleString()} ج.م)</option>`).join('');
+  }
+
+  function applyBulkMoveToTreasury(accId, amount, isCollection, noteText) {
+    const amt = Number(amount) || 0;
+    if (amt <= 0 || !accId || typeof treasuryAccounts === 'undefined') return;
+    const acc = treasuryAccounts.find(a => a.id === accId);
+    if (!acc) return;
+    acc.balance = (Number(acc.balance) || 0) + (isCollection ? amt : -amt);
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    if (typeof treasuryMovements !== 'undefined') {
+      treasuryMovements.unshift({
+        id: 'TMV-' + String(treasuryMovements.length + 1).padStart(4, '0'),
+        date: nowStr,
+        kind: isCollection ? 'in' : 'out',
+        kindLabel: isCollection ? '📥 تحصيل جملة' : '📤 سداد مشتريات جملة',
+        fromId: isCollection ? '' : acc.id,
+        toId: isCollection ? acc.id : '',
+        fromName: isCollection ? 'عميل جملة' : acc.name,
+        toName: isCollection ? acc.name : 'مورد جملة',
+        amount: amt,
+        note: noteText || ''
+      });
+    }
+    if (typeof renderTreasuryTab === 'function') renderTreasuryTab();
+    if (typeof saveTreasuryState === 'function') saveTreasuryState(true);
+  }
+
+  function openBulkSalesModal() {
+    ensureAdminUnlockedThenRun('أدخل الرقم السري لفتح شاشة بيع الجملة', () => {
+      const curCli = cleanEgyptianPhone((document.getElementById('clientName') || {}).value || '').trim();
+      document.getElementById('bsClientName').value = curCli;
+      const posTier = (document.getElementById('priceTier') || {}).value || 'wholesale';
+      document.getElementById('bsTier').value = posTier === 'retail' ? 'wholesale' : posTier;
+
+      if (Array.isArray(invoiceItems) && invoiceItems.length > 0) {
+        bulkSalesRows = invoiceItems.filter(i => i.kind !== 'discount').map(i => ({
+          name: i.name,
+          kind: i.kind || 'stock',
+          qty: Number(i.qty) || 1,
+          price: Number(i.price) || 0
+        }));
+      } else {
+        bulkSalesRows = [];
+      }
+
+      document.getElementById('bsProdInput').value = '';
+      document.getElementById('bsQty').value = '1';
+      document.getElementById('bsPrice').value = '';
+      document.getElementById('bsPaid').value = (document.getElementById('paidAmount') || {}).value || '0';
+      document.getElementById('bsInstallmentsBox').style.display = 'none';
+      document.getElementById('bsInstRows').innerHTML = '';
+      populateBulkTreasurySelect('bsTreasuryAccSelect');
+      renderBulkSalesGrid();
+      document.getElementById('bulkSalesModal').style.display = 'flex';
+      setTimeout(() => { const p = document.getElementById('bsProdInput'); if (p) p.focus(); }, 80);
+    });
+  }
+
+  function showBulkClientDropdown() {
+    const dd = document.getElementById('bsClientDropdown');
+    const q = normalizeArabic((document.getElementById('bsClientName') || {}).value || '');
+    const matches = clients.filter(c => !q || normalizeArabic(c.name).includes(q)).slice(0, 12);
+    dd.innerHTML = matches.map(c => `
+      <div class="client-dd-item" onclick="document.getElementById('bsClientName').value='${c.name.replace(/'/g, "\\'")}';document.getElementById('bsClientDropdown').style.display='none';updateBulkSalesSummary();">
+        <div><strong>👤 ${c.name}</strong> <small style="color:#64748b;">(${c.tier})</small></div>
+        <strong style="color:${c.balance > 0 ? '#dc2626' : '#16a34a'};">${Number(c.balance || 0).toLocaleString()} ج.م</strong>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function showBulkSalesProdDropdown() {
+    const dd = document.getElementById('bsProdDropdown');
+    const q = normalizeArabic((document.getElementById('bsProdInput') || {}).value || '');
+    const tier = (document.getElementById('bsTier') || {}).value || 'wholesale';
+    const matches = getSortedCatalogByUsage().filter(p => !q || normalizeArabic(p.name).includes(q) || normalizeArabic(p.aliases).includes(q)).slice(0, 12);
+    dd.innerHTML = matches.map(p => `
+      <div class="client-dd-item" onclick="selectBulkSalesProd('${p.name.replace(/'/g, "\\'")}')">
+        <div><strong>${p.name}</strong> <small style="color:#64748b;">(متاح: ${p.kind === 'service' ? 'خدمي' : p.stock})</small></div>
+        <strong style="color:#1d4ed8;">${Number(p[tier] || p.wholesale || 0).toLocaleString()} ج.م</strong>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function selectBulkSalesProd(prodName) {
+    const tier = (document.getElementById('bsTier') || {}).value || 'wholesale';
+    const p = catalog.find(x => x.name === prodName);
+    document.getElementById('bsProdInput').value = prodName;
+    if (p) document.getElementById('bsPrice').value = Number(p[tier] || p.wholesale || 0);
+    document.getElementById('bsProdDropdown').style.display = 'none';
+    const qInp = document.getElementById('bsQty');
+    if (qInp) { qInp.focus(); qInp.select(); }
+  }
+
+  function applyBulkSalesTierPrices() {
+    const tier = (document.getElementById('bsTier') || {}).value || 'wholesale';
+    bulkSalesRows.forEach(r => {
+      const p = catalog.find(x => x.name === r.name);
+      if (p && p[tier]) r.price = Number(p[tier]) || r.price;
+    });
+    renderBulkSalesGrid();
+  }
+
+  function addBulkSalesRow() {
+    const rawName = (document.getElementById('bsProdInput') || {}).value.trim();
+    const qty = Number((document.getElementById('bsQty') || {}).value) || 0;
+    const tier = (document.getElementById('bsTier') || {}).value || 'wholesale';
+    const found = catalog.find(p => normalizeArabic(p.name) === normalizeArabic(rawName));
+    const price = Number((document.getElementById('bsPrice') || {}).value) || (found ? Number(found[tier] || found.wholesale || 0) : 0);
+    if (!rawName || qty <= 0 || price <= 0) return alert('اختر الصنف وحدد الكمية والسعر');
+
+    const name = found ? found.name : rawName;
+    const existing = bulkSalesRows.find(r => r.name === name);
+    if (existing) { existing.qty += qty; existing.price = price; }
+    else bulkSalesRows.push({ name, kind: found ? found.kind : 'stock', qty, price });
+
+    document.getElementById('bsProdInput').value = '';
+    document.getElementById('bsQty').value = '1';
+    document.getElementById('bsPrice').value = '';
+    renderBulkSalesGrid();
+    document.getElementById('bsProdInput').focus();
+  }
+
+  function editBulkSalesCell(idx, field, val) {
+    if (!bulkSalesRows[idx]) return;
+    if (field === 'qty') bulkSalesRows[idx].qty = Math.max(1, Number(val) || 1);
+    if (field === 'price') bulkSalesRows[idx].price = Math.max(0, Number(val) || 0);
+    renderBulkSalesGrid();
+  }
+
+  function renderBulkSalesGrid() {
+    const tbody = document.getElementById('bsGridBody');
+    if (!tbody) return;
+    tbody.innerHTML = bulkSalesRows.map((r, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td style="text-align:right;font-weight:800;">${r.name}</td>
+        <td><input type="number" min="1" value="${r.qty}" onchange="editBulkSalesCell(${idx}, 'qty', this.value)" style="width:70px;text-align:center;font-weight:800;padding:4px;border:1px solid #cbd5e1;border-radius:6px;"></td>
+        <td><input type="number" min="0" step="any" value="${r.price}" onchange="editBulkSalesCell(${idx}, 'price', this.value)" style="width:85px;text-align:center;font-weight:800;padding:4px;border:1px solid #cbd5e1;border-radius:6px;"></td>
+        <td style="font-weight:900;color:#1d4ed8;">${(r.qty * r.price).toLocaleString()} ج.م</td>
+        <td><button type="button" class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="bulkSalesRows.splice(${idx},1);renderBulkSalesGrid();">✕</button></td>
+      </tr>
+    `).join('') || `<tr><td colspan="6" style="color:#64748b;padding:14px;">أضف الأصناف من الشريط بالأعلى لتظهر هنا بنمط الإكسيل</td></tr>`;
+    updateBulkSalesSummary();
+  }
+
+  function setBulkSalesMode(m) {
+    document.getElementById('bsModeInstantBtn').classList.toggle('active-mode', m === 'instant');
+    document.getElementById('bsModeInstBtn').classList.toggle('active-mode', m === 'inst');
+    if (m === 'instant') document.getElementById('bsInstallmentsBox').style.display = 'none';
+  }
+
+  function toggleBulkSalesInstallments() {
+    const box = document.getElementById('bsInstallmentsBox');
+    const show = box.style.display !== 'block';
+    box.style.display = show ? 'block' : 'none';
+    setBulkSalesMode(show ? 'inst' : 'instant');
+    if (show) generateBsInstallments();
+  }
+
+  function setBsInstMode(m) {
+    bsInstMode = m;
+    document.getElementById('bsInstCountBtn').classList.toggle('active-mode', m === 'count');
+    document.getElementById('bsInstWeeklyBtn').classList.toggle('active-mode', m === 'weekly');
+    document.getElementById('bsCountRow').style.display = m === 'count' ? 'flex' : 'none';
+    document.getElementById('bsWeeklyRow').style.display = m === 'weekly' ? 'flex' : 'none';
+    generateBsInstallments();
+  }
+
+  function generateBsInstallments() {
+    const tot = bulkSalesRows.reduce((s, r) => s + r.qty * r.price, 0);
+    const paid = Number((document.getElementById('bsPaid') || {}).value) || 0;
+    const rem = Math.max(0, tot - paid);
+    const box = document.getElementById('bsInstRows');
+    if (!box) return;
+    if (rem <= 0) { box.innerHTML = `<div style="font-size:10.5px;color:#94a3b8;margin-top:4px;">لا يوجد متبقي لتقسيمه</div>`; return; }
+    const list = buildWeeklyScheduleList(rem, bsInstMode, (document.getElementById('bsInstCount') || {}).value, (document.getElementById('bsInstWeeklyAmt') || {}).value);
+    box.innerHTML = list.map((it, i) => `
+      <div class="inst-row">
+        <span style="min-width:48px;color:#e2e8f0;">دفعة ${i + 1}:</span>
+        <input type="number" class="bs-inst-amt" value="${it.amount}" style="width:82px;">
+        <input type="date" class="bs-inst-date" value="${it.date}" style="flex:1;">
+      </div>
+    `).join('');
+  }
+
+  function updateBulkSalesSummary() {
+    const cliName = cleanEgyptianPhone((document.getElementById('bsClientName') || {}).value || '').trim();
+    const foundCli = findClientInMemory(cliName);
+    const prevBal = foundCli ? (Number(foundCli.balance) || 0) : 0;
+    const tot = bulkSalesRows.reduce((s, r) => s + r.qty * r.price, 0);
+    const paid = Number((document.getElementById('bsPaid') || {}).value) || 0;
+    const rem = tot - paid;
+
+    document.getElementById('bsClientBalStrip').innerText = foundCli
+      ? `🔗 عميل مسجل: ${foundCli.name} | الرصيد السابق: ${prevBal.toLocaleString()} ج.م | الإجمالي بعد هذه الفاتورة: ${(prevBal + rem).toLocaleString()} ج.م`
+      : (cliName ? `🆕 عميل جديد: ${cliName} | المتبقي من الفاتورة: ${rem.toLocaleString()} ج.م` : 'الرصيد السابق للعميل: 0 ج.م');
+    document.getElementById('bsTotalVal').innerText = `${tot.toLocaleString()} ج.م`;
+    document.getElementById('bsRemVal').innerText = `${rem.toLocaleString()} ج.م`;
+    if (document.getElementById('bsInstallmentsBox').style.display === 'block') generateBsInstallments();
+  }
+
+  function submitBulkSalesInvoice() {
+    if (bulkSalesRows.length === 0) return alert('أضف صنفاً واحداً على الأقل في جدول بيع الجملة!');
+    const clientName = cleanEgyptianPhone((document.getElementById('bsClientName') || {}).value || '').trim() || 'عميل نقدي';
+    const tierMap = { retail: 'قطاعي', technician: 'فني', wholesale: 'جملة' };
+    const tierKey = (document.getElementById('bsTier') || {}).value || 'wholesale';
+    const tierLabel = tierMap[tierKey] || 'جملة';
+    const total = bulkSalesRows.reduce((s, r) => s + r.qty * r.price, 0);
+    const paid = Number((document.getElementById('bsPaid') || {}).value) || 0;
+    const remaining = total - paid;
+    const accId = (document.getElementById('bsTreasuryAccSelect') || {}).value || '';
+
+    const installments = [];
+    if (document.getElementById('bsInstallmentsBox').style.display === 'block' && remaining > 0) {
+      const amts = document.querySelectorAll('.bs-inst-amt');
+      const dates = document.querySelectorAll('.bs-inst-date');
+      for (let i = 0; i < amts.length; i++) {
+        const a = Number(amts[i].value) || 0;
+        const d = dates[i].value;
+        if (a > 0 && d) installments.push({ amount: a, date: d });
+      }
+    }
+
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const snapshotItems = bulkSalesRows.map(r => ({
+      name: r.name,
+      qty: Number(r.qty) || 1,
+      price: Number(r.price) || 0,
+      kind: r.kind || 'stock'
+    }));
+
+    snapshotItems.forEach(it => {
+      if (it.kind !== 'service') {
+        const p = catalog.find(x => x.name === it.name);
+        if (p) p.stock -= Number(it.qty);
+      }
+    });
+
+    if (clientName !== 'عميل نقدي') {
+      const cli = findClientInMemory(clientName);
+      if (cli) {
+        cli.balance += remaining;
+        cli.lastUpdate = nowStr;
+        if (cli.balance <= 0) cli.reminderDate = '';
+      } else {
+        clients.unshift({ name: clientName, tier: tierLabel, balance: remaining, behavior: 'دائم', reminderDate: '', lastUpdate: nowStr, notes: '', invoiceCount: 1 });
+      }
+    }
+
+    installments.forEach((inst, idx) => {
+      customAlertsList.unshift({
+        id: 'ALT-NEW', date: inst.date, target: clientName,
+        title: `تحصيل دفعة جملة (${idx + 1} من ${installments.length})`,
+        amount: inst.amount, kind: 'تحصيل جملة', status: 'نشط'
+      });
+    });
+
+    const tempId = 'INV-' + String(oldInvoices.length + 1).padStart(4, '0');
+    const savedInv = {
+      id: tempId, date: nowStr, clientName, tier: tierLabel,
+      total, paid, remaining, items: snapshotItems,
+      reminderDate: '', orderType: 'instant', shippingNote: 'بيع جملة'
+    };
+    oldInvoices.unshift(savedInv);
+
+    if (paid > 0 && accId) applyBulkMoveToTreasury(accId, paid, true, `تحصيل بيع جملة - ${clientName}`);
+
+    invoiceItems = [];
+    document.getElementById('bulkSalesModal').style.display = 'none';
+    renderAllViews();
+    showToast('✅ تم اعتماد فاتورة بيع الجملة وتحديث المخزن والحساب والخزنة!');
+
+    enqueueServerSync({
+      type: 'save_invoice', editInvoiceId: null, pin: sessionAdminPin,
+      clientName, tier: tierLabel, paid, reminderDate: '', orderType: 'instant',
+      shippingNote: 'بيع جملة', items: snapshotItems, installments
+    });
+    setTimeout(() => openPrintInvoiceModal(savedInv), 120);
+  }
+
+  function openBulkPurchaseModal() {
+    ensureAdminUnlockedThenRun('أدخل الرقم السري لفتح شاشة شراء الجملة', () => {
+      bulkPurchaseRows = [];
+      document.getElementById('bpSupplierName').value = '';
+      document.getElementById('bpProdInput').value = '';
+      document.getElementById('bpKind').value = 'stock';
+      document.getElementById('bpQty').value = '1';
+      document.getElementById('bpCost').value = '';
+      document.getElementById('bpPaid').value = '0';
+      document.getElementById('bpInstallmentsBox').style.display = 'none';
+      document.getElementById('bpInstRows').innerHTML = '';
+      populateBulkTreasurySelect('bpTreasuryAccSelect');
+      renderBulkPurchaseGrid();
+      document.getElementById('bulkPurchaseModal').style.display = 'flex';
+      setTimeout(() => { const s = document.getElementById('bpSupplierName'); if (s) s.focus(); }, 80);
+    });
+  }
+
+  function showBpSupplierDropdown() {
+    const dd = document.getElementById('bpSupplierDropdown');
+    const q = normalizeArabic((document.getElementById('bpSupplierName') || {}).value || '');
+    const matches = suppliersList.filter(s => !q || normalizeArabic(s.name).includes(q)).slice(0, 12);
+    dd.innerHTML = matches.map(s => `
+      <div class="client-dd-item" onclick="document.getElementById('bpSupplierName').value='${s.name.replace(/'/g, "\\'")}';document.getElementById('bpSupplierDropdown').style.display='none';updateBulkPurchaseSummary();">
+        <strong>🏭 ${s.name}</strong>
+        <strong style="color:${s.balance > 0 ? '#dc2626' : '#16a34a'};">${Number(s.balance || 0).toLocaleString()} ج.م</strong>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function showBpProdDropdown() {
+    const dd = document.getElementById('bpProdDropdown');
+    const q = normalizeArabic((document.getElementById('bpProdInput') || {}).value || '');
+    const matches = getSortedCatalogByUsage().filter(p => !q || normalizeArabic(p.name).includes(q) || normalizeArabic(p.aliases).includes(q)).slice(0, 12);
+    dd.innerHTML = matches.map(p => `
+      <div class="client-dd-item" onclick="selectBpProd('${p.name.replace(/'/g, "\\'")}')">
+        <div><strong>${p.name}</strong> <small style="color:#64748b;">(متاح: ${p.stock})</small></div>
+        <strong style="color:#0f766e;">تكلفة: ${Number(p.cost || 0).toLocaleString()} ج.م</strong>
+      </div>
+    `).join('');
+    dd.style.display = matches.length > 0 ? 'block' : 'none';
+  }
+
+  function selectBpProd(prodName) {
+    const p = catalog.find(x => x.name === prodName);
+    document.getElementById('bpProdInput').value = prodName;
+    if (p) {
+      document.getElementById('bpKind').value = p.kind || 'stock';
+      document.getElementById('bpCost').value = Number(p.cost || 0);
+    }
+    document.getElementById('bpProdDropdown').style.display = 'none';
+    const qInp = document.getElementById('bpQty');
+    if (qInp) { qInp.focus(); qInp.select(); }
+  }
+
+  function addBulkPurchaseRow() {
+    const rawName = (document.getElementById('bpProdInput') || {}).value.trim();
+    const kind = (document.getElementById('bpKind') || {}).value || 'stock';
+    const qty = Number((document.getElementById('bpQty') || {}).value) || 0;
+    const unitCost = Number((document.getElementById('bpCost') || {}).value) || 0;
+    if (!rawName || qty <= 0 || unitCost <= 0) return alert('اكتب اسم الصنف والكمية وسعر الشراء');
+
+    const existing = catalog.find(p => normalizeArabic(p.name) === normalizeArabic(rawName));
+    const name = existing ? existing.name : rawName;
+    const rowKind = existing ? existing.kind : kind;
+    const inCart = bulkPurchaseRows.find(r => r.name === name);
+    if (inCart) { inCart.qty += qty; inCart.unitCost = unitCost; }
+    else {
+      bulkPurchaseRows.push({
+        name, isNew: !existing, kind: rowKind, qty, unitCost,
+        wholesale: Math.round(unitCost * 1.05 * 100) / 100,
+        technician: Math.round(unitCost * 1.10 * 100) / 100,
+        retail: Math.round(unitCost * 1.20 * 100) / 100,
+        aliases: existing ? existing.aliases : generateSmartAliases(name),
+        updateSellPrices: true
+      });
+    }
+
+    document.getElementById('bpProdInput').value = '';
+    document.getElementById('bpQty').value = '1';
+    document.getElementById('bpCost').value = '';
+    renderBulkPurchaseGrid();
+    document.getElementById('bpProdInput').focus();
+  }
+
+  function editBulkPurchaseCell(idx, field, val) {
+    if (!bulkPurchaseRows[idx]) return;
+    if (field === 'qty') bulkPurchaseRows[idx].qty = Math.max(1, Number(val) || 1);
+    if (field === 'unitCost') {
+      const c = Math.max(0, Number(val) || 0);
+      bulkPurchaseRows[idx].unitCost = c;
+      bulkPurchaseRows[idx].wholesale = Math.round(c * 1.05 * 100) / 100;
+      bulkPurchaseRows[idx].technician = Math.round(c * 1.10 * 100) / 100;
+      bulkPurchaseRows[idx].retail = Math.round(c * 1.20 * 100) / 100;
+    }
+    renderBulkPurchaseGrid();
+  }
+
+  function renderBulkPurchaseGrid() {
+    const tbody = document.getElementById('bpGridBody');
+    if (!tbody) return;
+    tbody.innerHTML = bulkPurchaseRows.map((r, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td style="text-align:right;font-weight:800;">${r.name}</td>
+        <td>${r.kind === 'service' ? '🌐 IPTV' : '📦 مخزني'}</td>
+        <td><input type="number" min="1" value="${r.qty}" onchange="editBulkPurchaseCell(${idx}, 'qty', this.value)" style="width:70px;text-align:center;font-weight:800;padding:4px;border:1px solid #cbd5e1;border-radius:6px;"></td>
+        <td><input type="number" min="0" step="any" value="${r.unitCost}" onchange="editBulkPurchaseCell(${idx}, 'unitCost', this.value)" style="width:85px;text-align:center;font-weight:800;padding:4px;border:1px solid #cbd5e1;border-radius:6px;"></td>
+        <td style="font-weight:900;color:#0f766e;">${(r.qty * r.unitCost).toLocaleString()} ج.م</td>
+        <td><button type="button" class="btn-sm" style="background:#fee2e2;color:#dc2626;" onclick="bulkPurchaseRows.splice(${idx},1);renderBulkPurchaseGrid();">✕</button></td>
+      </tr>
+    `).join('') || `<tr><td colspan="7" style="color:#64748b;padding:14px;">أضف الأصناف المشتراة من الشريط بالأعلى لتظهر هنا بنمط الإكسيل</td></tr>`;
+    updateBulkPurchaseSummary();
+  }
+
+  function setBulkPurchaseMode(m) {
+    document.getElementById('bpModeInstantBtn').classList.toggle('active-mode', m === 'instant');
+    document.getElementById('bpModeInstBtn').classList.toggle('active-mode', m === 'inst');
+    if (m === 'instant') document.getElementById('bpInstallmentsBox').style.display = 'none';
+  }
+
+  function toggleBulkPurchaseInstallments() {
+    const box = document.getElementById('bpInstallmentsBox');
+    const show = box.style.display !== 'block';
+    box.style.display = show ? 'block' : 'none';
+    setBulkPurchaseMode(show ? 'inst' : 'instant');
+    if (show) generateBpInstallments();
+  }
+
+  function setBpInstMode(m) {
+    bpInstMode = m;
+    document.getElementById('bpInstCountBtn').classList.toggle('active-mode', m === 'count');
+    document.getElementById('bpInstWeeklyBtn').classList.toggle('active-mode', m === 'weekly');
+    document.getElementById('bpCountRow').style.display = m === 'count' ? 'flex' : 'none';
+    document.getElementById('bpWeeklyRow').style.display = m === 'weekly' ? 'flex' : 'none';
+    generateBpInstallments();
+  }
+
+  function generateBpInstallments() {
+    const tot = bulkPurchaseRows.reduce((s, r) => s + r.qty * r.unitCost, 0);
+    const paid = Number((document.getElementById('bpPaid') || {}).value) || 0;
+    const rem = Math.max(0, tot - paid);
+    const box = document.getElementById('bpInstRows');
+    if (!box) return;
+    if (rem <= 0) { box.innerHTML = `<div style="font-size:10.5px;color:#94a3b8;margin-top:4px;">لا يوجد متبقي لتقسيمه</div>`; return; }
+    const list = buildWeeklyScheduleList(rem, bpInstMode, (document.getElementById('bpInstCount') || {}).value, (document.getElementById('bpInstWeeklyAmt') || {}).value);
+    box.innerHTML = list.map((it, i) => `
+      <div class="inst-row">
+        <span style="min-width:48px;color:#e2e8f0;">دفعة ${i + 1}:</span>
+        <input type="number" class="bp-inst-amt" value="${it.amount}" style="width:82px;">
+        <input type="date" class="bp-inst-date" value="${it.date}" style="flex:1;">
+      </div>
+    `).join('');
+  }
+
+  function updateBulkPurchaseSummary() {
+    const supName = cleanEgyptianPhone((document.getElementById('bpSupplierName') || {}).value || '').trim();
+    const foundSup = suppliersList.find(s => normalizeArabic(s.name) === normalizeArabic(supName));
+    const prevBal = foundSup ? (Number(foundSup.balance) || 0) : 0;
+    const tot = bulkPurchaseRows.reduce((s, r) => s + r.qty * r.unitCost, 0);
+    const paid = Number((document.getElementById('bpPaid') || {}).value) || 0;
+    const rem = tot - paid;
+
+    document.getElementById('bpSupplierBalStrip').innerText = foundSup
+      ? `🔗 مورد مسجل: ${foundSup.name} | الرصيد السابق: ${prevBal.toLocaleString()} ج.م | الإجمالي بعد الفاتورة: ${(prevBal + rem).toLocaleString()} ج.م`
+      : (supName ? `🆕 مورد جديد: ${supName} | المتبقي للمورد: ${rem.toLocaleString()} ج.م` : 'الرصيد السابق للمورد: 0 ج.م');
+    document.getElementById('bpTotalVal').innerText = `${tot.toLocaleString()} ج.م`;
+    document.getElementById('bpRemVal').innerText = `${rem.toLocaleString()} ج.م`;
+    if (document.getElementById('bpInstallmentsBox').style.display === 'block') generateBpInstallments();
+  }
+
+  function submitBulkPurchaseInvoice() {
+    const supplier = cleanEgyptianPhone((document.getElementById('bpSupplierName') || {}).value || '').trim();
+    if (!supplier || bulkPurchaseRows.length === 0) return alert('اكتب اسم المورد وأضف صنفاً واحداً على الأقل في جدول شراء الجملة!');
+
+    const total = bulkPurchaseRows.reduce((s, r) => s + r.qty * r.unitCost, 0);
+    const paid = Number((document.getElementById('bpPaid') || {}).value) || 0;
+    const rem = total - paid;
+    const accId = (document.getElementById('bpTreasuryAccSelect') || {}).value || '';
+
+    const installments = [];
+    if (document.getElementById('bpInstallmentsBox').style.display === 'block' && rem > 0) {
+      const amts = document.querySelectorAll('.bp-inst-amt');
+      const dates = document.querySelectorAll('.bp-inst-date');
+      for (let i = 0; i < amts.length; i++) {
+        const a = Number(amts[i].value) || 0;
+        const d = dates[i].value;
+        if (a > 0 && d) installments.push({ amount: a, date: d });
+      }
+    }
+
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const snapshot = [...bulkPurchaseRows];
+
+    snapshot.forEach(it => {
+      const prod = catalog.find(p => p.name === it.name);
+      if (prod) {
+        if (prod.kind !== 'service') prod.stock += Number(it.qty);
+        prod.cost = Number(it.unitCost);
+        prod.wholesale = Math.round(it.unitCost * 1.05 * 100) / 100;
+        prod.technician = Math.round(it.unitCost * 1.10 * 100) / 100;
+        prod.retail = Math.round(it.unitCost * 1.20 * 100) / 100;
+      } else {
+        catalog.push({
+          name: it.name, aliases: it.aliases || generateSmartAliases(it.name),
+          cost: Number(it.unitCost),
+          wholesale: Math.round(it.unitCost * 1.05 * 100) / 100,
+          technician: Math.round(it.unitCost * 1.10 * 100) / 100,
+          retail: Math.round(it.unitCost * 1.20 * 100) / 100,
+          stock: it.kind === 'service' ? 0 : Number(it.qty),
+          kind: it.kind || 'stock', minStock: 2
+        });
+      }
+    });
+
+    const sup = suppliersList.find(s => isSameEntityTarget(s.name, supplier));
+    if (sup) { sup.balance += rem; sup.lastUpdate = nowStr; }
+    else suppliersList.unshift({ name: supplier, balance: rem, lastUpdate: nowStr, notes: '' });
+
+    const purId = 'PUR-' + String(supplierLogsList.length + 1).padStart(4, '0');
+    supplierLogsList.unshift({
+      id: purId, date: nowStr, supplier, kind: 'شراء بضاعة', total, paid, remaining: rem,
+      details: '[شراء جملة] ' + snapshot.map(x => `${x.qty} × ${x.name}`).join(' + '),
+      items: snapshot
+    });
+
+    installments.forEach((inst, idx) => {
+      customAlertsList.unshift({
+        id: 'ALT-NEW', date: inst.date, target: supplier,
+        title: `سداد دفعة مورد (${idx + 1} من ${installments.length}) - ${purId}`,
+        amount: inst.amount, kind: 'سداد مورد', status: 'نشط'
+      });
+    });
+
+    if (paid > 0 && accId) applyBulkMoveToTreasury(accId, paid, false, `سداد مشتريات جملة - ${supplier}`);
+
+    document.getElementById('bulkPurchaseModal').style.display = 'none';
+    renderAllViews();
+    showToast('✅ تم اعتماد فاتورة شراء الجملة وتحديث المخزن وحساب المورد والخزنة!');
+
+    enqueueServerSync({
+      type: 'save_purchase_multi', pin: sessionAdminPin,
+      editLogId: '', supplier, paid, items: snapshot, installments
+    });
+  }
+
+
+  // ============================================================================
+  // 10. طرق الدفع السريعة على شاشة الكاشير الرئيسية + ربط ذكي بالخزنة والبنك المربوط
+  // ============================================================================
+  let currentPosPayMethod = 'cash';
+  let currentBulkPayMethods = { bs: 'cash', bp: 'cash' };
+
+  function buildFilteredAccountOptionsHtml(pm) {
+    const list = (typeof treasuryAccounts !== 'undefined') ? treasuryAccounts : [];
+    const filtered = list.filter(a => a.type === pm);
+    if (filtered.length === 0) {
+      const emptyLabels = {
+        cash: '-- لا يوجد درج كاش (أضفه من الخزنة) --',
+        instapay: '-- لا يوجد حساب إنستاباي (أضفه من الخزنة) --',
+        wallet: '-- لا توجد محفظة فودافون كاش (أضفها من الخزنة) --',
+        bank: '-- لا يوجد حساب بنكي (أضفه من الخزنة) --'
+      };
+      return `<option value="">${emptyLabels[pm] || '-- لا يوجد حساب --'}</option>`;
+    }
+    return filtered.map(a => {
+      const lb = a.linkedBankId ? list.find(b => b.id === a.linkedBankId) : null;
+      if (pm === 'instapay') {
+        const bTag = lb ? ` ⬅️ 🏦 ${lb.name}` : ' (بدون بنك مربوط)';
+        return `<option value="${a.id}">⚡ ${a.name}${bTag}</option>`;
+      }
+      if (pm === 'wallet') {
+        const ph = a.phone ? ` (${a.phone})` : '';
+        const bTag = lb ? ` ⬅️ 🏦 ${lb.name}` : '';
+        return `<option value="${a.id}">📱 ${a.name}${ph}${bTag}</option>`;
+      }
+      const icon = pm === 'bank' ? '🏦' : '💵';
+      return `<option value="${a.id}">${icon} ${a.name} (${Number(a.balance || 0).toLocaleString()} ج.م)</option>`;
+    }).join('');
+  }
+
+  function selectPosPaymentMethod(pm) {
+    currentPosPayMethod = pm || 'cash';
+    document.querySelectorAll('#posPayMethodBar .pos-pm-btn').forEach(btn => {
+      btn.classList.toggle('active-pos-pm', btn.getAttribute('data-pm') === currentPosPayMethod);
+    });
+    const wrap = document.getElementById('posPayAccountWrap');
+    const sel = document.getElementById('posPayAccountSelect');
+    if (!wrap || !sel) return;
+    if (currentPosPayMethod === 'cash') {
+      wrap.style.display = 'none';
+      sel.innerHTML = buildFilteredAccountOptionsHtml('cash');
+    } else {
+      sel.innerHTML = buildFilteredAccountOptionsHtml(currentPosPayMethod);
+      wrap.style.display = 'block';
+    }
+  }
+
+  function selectBulkPayMethod(prefix, pm) {
+    currentBulkPayMethods[prefix] = pm || 'cash';
+    document.querySelectorAll(`#${prefix}PayMethodBar .pos-pm-btn`).forEach(btn => {
+      btn.classList.toggle('active-pos-pm', btn.getAttribute('data-pm') === pm);
+    });
+    const sel = document.getElementById(`${prefix}TreasuryAccSelect`);
+    if (sel) sel.innerHTML = buildFilteredAccountOptionsHtml(pm);
+  }
+
+  // Upgrade populateBulkTreasurySelect to default to 'cash' filtered cleanly
+  populateBulkTreasurySelect = function(selectId) {
+    const prefix = selectId.startsWith('bs') ? 'bs' : 'bp';
+    selectBulkPayMethod(prefix, 'cash');
+  };
+
+  // Upgrade applyBulkMoveToTreasury to route linked InstaPay bank cleanly
+  applyBulkMoveToTreasury = function(accId, amount, isCollection, noteText) {
+    const amt = Number(amount) || 0;
+    if (amt <= 0 || !accId || typeof treasuryAccounts === 'undefined') return;
+    const acc = treasuryAccounts.find(a => a.id === accId);
+    if (!acc) return;
+    const linkedBank = (acc.type === 'instapay' && acc.linkedBankId)
+      ? treasuryAccounts.find(b => b.id === acc.linkedBankId)
+      : null;
+    const targetAcc = linkedBank || acc;
+    targetAcc.balance = (Number(targetAcc.balance) || 0) + (isCollection ? amt : -amt);
+    const displayLabel = linkedBank ? `${acc.name} ⬅️ ${linkedBank.name}` : acc.name;
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    if (typeof treasuryMovements !== 'undefined') {
+      treasuryMovements.unshift({
+        id: 'TMV-' + String(treasuryMovements.length + 1).padStart(4, '0'),
+        date: nowStr,
+        kind: isCollection ? 'in' : 'out',
+        kindLabel: isCollection ? '📥 تحصيل جملة' : '📤 سداد مشتريات جملة',
+        fromId: isCollection ? '' : targetAcc.id,
+        toId: isCollection ? targetAcc.id : '',
+        fromName: isCollection ? 'عميل جملة' : displayLabel,
+        toName: isCollection ? displayLabel : 'مورد جملة',
+        amount: amt,
+        note: noteText || ''
+      });
+    }
+    if (typeof renderTreasuryTab === 'function') renderTreasuryTab();
+    if (typeof saveTreasuryState === 'function') saveTreasuryState(true);
+  };
+
+  // Hook POS payment method into submitInvoice & clearInvoice
+  const _origClearInvoiceV61 = clearInvoice;
+  clearInvoice = function() {
+    _origClearInvoiceV61();
+    selectPosPaymentMethod('cash');
+  };
+
+  const _origSubmitInvoiceV61 = submitInvoice;
+  submitInvoice = function() {
+    const paidVal = Number((document.getElementById('paidAmount') || {}).value) || 0;
+    const isDeferred = (currentOrderMode === 'deferred');
+    const isEditing = Boolean(editingInvoiceId);
+    const pm = currentPosPayMethod || 'cash';
+    const cliRaw = cleanEgyptianPhone((document.getElementById('clientName') || {}).value || '').trim() || 'عميل نقدي';
+    const pmNames = { cash: 'كاش', instapay: 'إنستاباي', wallet: 'فودافون كاش', bank: 'تحويل بنكي' };
+
+    let chosenAcc = null;
+    if (paidVal > 0 && !isDeferred && !isEditing && typeof treasuryAccounts !== 'undefined') {
+      if (pm === 'cash') {
+        chosenAcc = treasuryAccounts.find(a => a.type === 'cash') || treasuryAccounts[0] || null;
+      } else {
+        const selId = (document.getElementById('posPayAccountSelect') || {}).value || '';
+        chosenAcc = treasuryAccounts.find(a => a.id === selId) || null;
+        if (!chosenAcc) {
+          alert(`⚠️ اختر حساب (${pmNames[pm]}) صالح أو أضفه أولاً من تبويب الخزنة، أو حوّل طريقة الدفع إلى كاش.`);
+          return;
+        }
+      }
+      if (chosenAcc) {
+        const linkedBank = (chosenAcc.type === 'instapay' && chosenAcc.linkedBankId)
+          ? treasuryAccounts.find(b => b.id === chosenAcc.linkedBankId)
+          : null;
+        const targetAcc = linkedBank || chosenAcc;
+        const displayLabel = linkedBank ? `${chosenAcc.name} ⬅️ ${linkedBank.name}` : chosenAcc.name;
+        const shipEl = document.getElementById('shippingNoteInput');
+        if (shipEl && pm !== 'cash') {
+          const tag = `[دفع: ${pmNames[pm]} - ${displayLabel}]`;
+          if (!shipEl.value.includes(tag)) shipEl.value = shipEl.value ? `${shipEl.value} ${tag}` : tag;
+        }
+        // Apply to treasury right after confirming invoice validation passes
+        const mathCheck = getInvoiceMathSummary(invoiceItems);
+        const hasZero = invoiceItems.some(i => (Number(i.price) || 0) <= 0);
+        if (isAdminUnlocked && sessionAdminPin && invoiceItems.length > 0 && mathCheck.regularItems.length > 0 && !hasZero && mathCheck.netTotal >= 0) {
+          targetAcc.balance = (Number(targetAcc.balance) || 0) + paidVal;
+          const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+          treasuryMovements.unshift({
+            id: 'TMV-' + String(treasuryMovements.length + 1).padStart(4, '0'),
+            date: nowStr,
+            kind: 'in',
+            kindLabel: `📥 مبيعات كاشير (${pmNames[pm]})`,
+            fromId: '',
+            toId: targetAcc.id,
+            fromName: cliRaw,
+            toName: displayLabel,
+            amount: paidVal,
+            note: `تحصيل فاتورة كاشير - ${cliRaw}`
+          });
+          if (typeof renderTreasuryTab === 'function') renderTreasuryTab();
+          if (typeof saveTreasuryState === 'function') saveTreasuryState(true);
+        }
+      }
+    }
+    return _origSubmitInvoiceV61();
   };
 
 </script>
@@ -10140,6 +10982,232 @@ ${statusLine}
       </div>
 
       <div id="trsExpBatchList" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+
+  <!-- شاشة بيع الجملة بنمط الإكسيل -->
+  <div id="bulkSalesModal" class="modal-overlay">
+    <div class="modal-box bulk-excel-modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1d4ed8;padding-bottom:8px;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:16px;font-weight:900;color:#0f2922;">📦 شاشة بيع الجملة (جدول إكسيل للكميات الكبيرة)</div>
+          <div style="font-size:11px;color:#475569;font-weight:700;">أدخل الأصناف والكميات والأسعار سطر ورا سطر في جدول واضح ثم حدد الدفع والجدولة</div>
+        </div>
+        <button type="button" onclick="document.getElementById('bulkSalesModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕ إغلاق</button>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:10px;">
+        <div class="form-group" style="position:relative;">
+          <label>👤 اسم العميل أو رقمه</label>
+          <input type="text" id="bsClientName" autocomplete="off" placeholder="اكتب اسم العميل أو اختر..."
+            onfocus="showBulkClientDropdown()" oninput="this.value=cleanEgyptianPhone(this.value);showBulkClientDropdown();updateBulkSalesSummary();">
+          <div id="bsClientDropdown" class="client-dropdown" style="top:52px;"></div>
+        </div>
+        <div class="form-group">
+          <label>🏷️ فئة السعر</label>
+          <select id="bsTier" onchange="applyBulkSalesTierPrices()">
+            <option value="wholesale" selected>جملة</option>
+            <option value="technician">فني</option>
+            <option value="retail">قطاعي</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="bsClientBalStrip" style="background:#eff6ff;color:#1e3a8a;border:1px solid #bfdbfe;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:800;margin-bottom:10px;">
+        الرصيد السابق للعميل: 0 ج.م
+      </div>
+
+      <div class="bulk-entry-bar" onkeypress="if(event.key==='Enter'){event.preventDefault();addBulkSalesRow();}">
+        <div class="form-group" style="position:relative;">
+          <label>🔍 الصنف</label>
+          <input type="text" id="bsProdInput" autocomplete="off" placeholder="ابحث باسم الصنف..."
+            onfocus="showBulkSalesProdDropdown()" oninput="showBulkSalesProdDropdown()">
+          <div id="bsProdDropdown" class="client-dropdown" style="top:52px;"></div>
+        </div>
+        <div class="form-group">
+          <label>الكمية</label>
+          <input type="number" id="bsQty" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>سعر الوحدة</label>
+          <input type="number" id="bsPrice" min="0" step="any" placeholder="0">
+        </div>
+        <button type="button" onclick="addBulkSalesRow()" style="background:#1d4ed8;color:#fff;border:none;padding:9px 14px;border-radius:9px;font-weight:800;cursor:pointer;white-space:nowrap;">➕ إضافة</button>
+      </div>
+
+      <div class="bulk-grid-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:42px;">#</th>
+              <th style="text-align:right;">الصنف</th>
+              <th style="width:90px;">الكمية</th>
+              <th style="width:110px;">السعر</th>
+              <th style="width:120px;">الإجمالي</th>
+              <th style="width:65px;">حذف</th>
+            </tr>
+          </thead>
+          <tbody id="bsGridBody"></tbody>
+        </table>
+      </div>
+
+      <div class="bulk-settle-panel">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:13px;font-weight:800;margin-bottom:8px;">
+          <span>إجمالي الفاتورة: <strong id="bsTotalVal" style="color:#34d399;font-size:16px;">0 ج.م</strong></span>
+          <span>المتبقي: <strong id="bsRemVal" style="color:#fbbf24;font-size:16px;">0 ج.م</strong></span>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:8px;">
+          <div class="form-group">
+            <label style="color:#a7f3d0;">💵 الدفعة الأولانية / المدفوع الآن</label>
+            <input type="number" id="bsPaid" value="0" step="any" oninput="updateBulkSalesSummary()" style="font-weight:900;text-align:center;">
+          </div>
+          <div class="form-group">
+            <label style="color:#93c5fd;">💳 طريقة وحساب التحصيل</label>
+            <div class="pos-pay-method-row" id="bsPayMethodBar" style="margin-bottom:5px;">
+              <button type="button" class="pos-pm-btn active-pos-pm" data-pm="cash" onclick="selectBulkPayMethod('bs','cash')">💵 كاش</button>
+              <button type="button" class="pos-pm-btn" data-pm="instapay" onclick="selectBulkPayMethod('bs','instapay')">⚡ إنستاباي</button>
+              <button type="button" class="pos-pm-btn" data-pm="wallet" onclick="selectBulkPayMethod('bs','wallet')">📱 فودافون</button>
+              <button type="button" class="pos-pm-btn" data-pm="bank" onclick="selectBulkPayMethod('bs','bank')">🏦 بنكي</button>
+            </div>
+            <select id="bsTreasuryAccSelect"></select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <button type="button" id="bsModeInstantBtn" class="rem-chip active-mode" onclick="setBulkSalesMode('instant')">⚡ بيع فوري / آجل</button>
+          <button type="button" id="bsModeInstBtn" class="rem-chip" style="background:#0284c7;color:#fff;" onclick="toggleBulkSalesInstallments()">📅 تقسيم دفعات (جدولة)</button>
+        </div>
+
+        <div id="bsInstallmentsBox" class="installments-box">
+          <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap;">
+            <button type="button" id="bsInstCountBtn" class="rem-chip active-mode" style="flex:1;padding:4px 6px;font-size:10.5px;" onclick="setBsInstMode('count')">🔢 حسب عدد الدفعات</button>
+            <button type="button" id="bsInstWeeklyBtn" class="rem-chip" style="flex:1;padding:4px 6px;font-size:10.5px;" onclick="setBsInstMode('weekly')">💵 حسب قيمة القسط الأسبوعي</button>
+          </div>
+          <div id="bsCountRow" style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;">
+            <span>عدد الدفعات:</span>
+            <input type="number" id="bsInstCount" min="1" max="24" value="2" oninput="generateBsInstallments()" style="width:65px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+          </div>
+          <div id="bsWeeklyRow" style="display:none;justify-content:space-between;align-items:center;gap:6px;font-size:11px;">
+            <span>قيمة الدفعة الأسبوعية:</span>
+            <input type="number" id="bsInstWeeklyAmt" min="1" oninput="generateBsInstallments()" style="width:95px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+          </div>
+          <div id="bsInstRows"></div>
+        </div>
+      </div>
+
+      <button type="button" onclick="submitBulkSalesInvoice()" style="width:100%;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:900;font-size:14.5px;cursor:pointer;">✅ اعتماد فاتورة بيع الجملة</button>
+    </div>
+  </div>
+
+  <!-- شاشة شراء الجملة بنمط الإكسيل -->
+  <div id="bulkPurchaseModal" class="modal-overlay">
+    <div class="modal-box bulk-excel-modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0f766e;padding-bottom:8px;margin-bottom:10px;gap:8px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:16px;font-weight:900;color:#0f2922;">📦 شاشة شراء الجملة (جدول إكسيل للمشتريات الكبيرة)</div>
+          <div style="font-size:11px;color:#475569;font-weight:700;">أدخل المورد وأضف الأصناف والكميات والأسعار في الجدول ثم قيد المدفوع والجدولة</div>
+        </div>
+        <button type="button" onclick="document.getElementById('bulkPurchaseModal').style.display='none'" class="btn-sm" style="background:#fee2e2;color:#dc2626;">✕ إغلاق</button>
+      </div>
+
+      <div class="form-group" style="position:relative;margin-bottom:8px;">
+        <label>🏭 اسم المورد أو رقمه</label>
+        <input type="text" id="bpSupplierName" autocomplete="off" placeholder="اكتب اسم المورد أو اختر من القائمة..."
+          onfocus="showBpSupplierDropdown()" oninput="this.value=cleanEgyptianPhone(this.value);showBpSupplierDropdown();updateBulkPurchaseSummary();">
+        <div id="bpSupplierDropdown" class="client-dropdown" style="top:52px;"></div>
+        <div id="bpSupplierBalStrip" style="font-size:11.5px;font-weight:800;color:#0369a1;margin-top:4px;">الرصيد السابق للمورد: 0 ج.م</div>
+      </div>
+
+      <div class="bulk-pur-entry-bar" onkeypress="if(event.key==='Enter'){event.preventDefault();addBulkPurchaseRow();}">
+        <div class="form-group" style="position:relative;">
+          <label>🔍 الصنف (بحث أو جديد)</label>
+          <input type="text" id="bpProdInput" autocomplete="off" placeholder="اسم الصنف..."
+            onfocus="showBpProdDropdown()" oninput="showBpProdDropdown()">
+          <div id="bpProdDropdown" class="client-dropdown" style="top:52px;"></div>
+        </div>
+        <div class="form-group">
+          <label>النوع</label>
+          <select id="bpKind">
+            <option value="stock">📦 مخزني</option>
+            <option value="service">🌐 IPTV</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>الكمية</label>
+          <input type="number" id="bpQty" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>سعر الشراء</label>
+          <input type="number" id="bpCost" min="0" step="any" placeholder="0">
+        </div>
+        <button type="button" onclick="addBulkPurchaseRow()" style="background:#0f766e;color:#fff;border:none;padding:9px 14px;border-radius:9px;font-weight:800;cursor:pointer;white-space:nowrap;">➕ إضافة</button>
+      </div>
+
+      <div class="bulk-grid-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:42px;">#</th>
+              <th style="text-align:right;">الصنف</th>
+              <th style="width:80px;">النوع</th>
+              <th style="width:90px;">الكمية</th>
+              <th style="width:110px;">سعر الشراء</th>
+              <th style="width:120px;">الإجمالي</th>
+              <th style="width:65px;">حذف</th>
+            </tr>
+          </thead>
+          <tbody id="bpGridBody"></tbody>
+        </table>
+      </div>
+
+      <div class="bulk-settle-panel">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:13px;font-weight:800;margin-bottom:8px;">
+          <span>إجمالي المشتريات: <strong id="bpTotalVal" style="color:#34d399;font-size:16px;">0 ج.م</strong></span>
+          <span>المتبقي للمورد: <strong id="bpRemVal" style="color:#fbbf24;font-size:16px;">0 ج.م</strong></span>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:8px;">
+          <div class="form-group">
+            <label style="color:#a7f3d0;">💸 المدفوع للمورد الآن</label>
+            <input type="number" id="bpPaid" value="0" step="any" oninput="updateBulkPurchaseSummary()" style="font-weight:900;text-align:center;">
+          </div>
+          <div class="form-group">
+            <label style="color:#93c5fd;">💳 طريقة وحساب السداد</label>
+            <div class="pos-pay-method-row" id="bpPayMethodBar" style="margin-bottom:5px;">
+              <button type="button" class="pos-pm-btn active-pos-pm" data-pm="cash" onclick="selectBulkPayMethod('bp','cash')">💵 كاش</button>
+              <button type="button" class="pos-pm-btn" data-pm="instapay" onclick="selectBulkPayMethod('bp','instapay')">⚡ إنستاباي</button>
+              <button type="button" class="pos-pm-btn" data-pm="wallet" onclick="selectBulkPayMethod('bp','wallet')">📱 فودافون</button>
+              <button type="button" class="pos-pm-btn" data-pm="bank" onclick="selectBulkPayMethod('bp','bank')">🏦 بنكي</button>
+            </div>
+            <select id="bpTreasuryAccSelect"></select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <button type="button" id="bpModeInstantBtn" class="rem-chip active-mode" onclick="setBulkPurchaseMode('instant')">⚡ سداد / آجل</button>
+          <button type="button" id="bpModeInstBtn" class="rem-chip" style="background:#0284c7;color:#fff;" onclick="toggleBulkPurchaseInstallments()">📅 تقسيم دفعات (جدولة)</button>
+        </div>
+
+        <div id="bpInstallmentsBox" class="installments-box">
+          <div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap;">
+            <button type="button" id="bpInstCountBtn" class="rem-chip active-mode" style="flex:1;padding:4px 6px;font-size:10.5px;" onclick="setBpInstMode('count')">🔢 حسب عدد الدفعات</button>
+            <button type="button" id="bpInstWeeklyBtn" class="rem-chip" style="flex:1;padding:4px 6px;font-size:10.5px;" onclick="setBpInstMode('weekly')">💵 حسب قيمة القسط الأسبوعي</button>
+          </div>
+          <div id="bpCountRow" style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;">
+            <span>عدد الدفعات:</span>
+            <input type="number" id="bpInstCount" min="1" max="24" value="2" oninput="generateBpInstallments()" style="width:65px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+          </div>
+          <div id="bpWeeklyRow" style="display:none;justify-content:space-between;align-items:center;gap:6px;font-size:11px;">
+            <span>قيمة الدفعة الأسبوعية:</span>
+            <input type="number" id="bpInstWeeklyAmt" min="1" oninput="generateBpInstallments()" style="width:95px;padding:4px;border-radius:6px;border:none;text-align:center;font-weight:bold;">
+          </div>
+          <div id="bpInstRows"></div>
+        </div>
+      </div>
+
+      <button type="button" onclick="submitBulkPurchaseInvoice()" style="width:100%;background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:900;font-size:14.5px;cursor:pointer;">✅ اعتماد فاتورة شراء الجملة</button>
     </div>
   </div>
 
